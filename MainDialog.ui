@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
+ <author>Maybar</author>
  <class>MainDialog</class>
  <widget class="QDialog" name="MainDialog">
   <property name="geometry">

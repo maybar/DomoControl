@@ -81,7 +81,7 @@ class Grid(dict):
  
         # Check for no shared row and col names
         if set(rowNames).intersection(colNames):
-            raise ValueError, 'Row and column lists must not have any values in common'
+            raise ValueError('Row and column lists must not have any values in common')
  
     def __getitem__(self, key):
         if self._isCellKey(key):
@@ -94,7 +94,7 @@ class Grid(dict):
             return [ dict.__getitem__(self, (row, key)) for row in self.rowNames ]
 
         else:
-            raise KeyError, key
+            raise KeyError( key)
  
  
     def __setitem__(self, key, value):
@@ -110,7 +110,7 @@ class Grid(dict):
                 dict.__setitem__(self, (row, key), val)
  
         else:
-            raise ValueError, 'Invalid key or value: Grid[%r] = %r' % (key, value)
+            raise ValueError( 'Invalid key or value: Grid[%r] = %r' % (key, value))
  
  
     def _isCellKey(self, key):

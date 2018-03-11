@@ -8,12 +8,14 @@ from PyQt4.QtCore import QThread, Qt
 import RPi.GPIO as GPIO
 import time
 import datetime
-import urllib2
+from urllib.request import urlopen
 import tools
 #RADIO communication
 import piVirtualWire.piVirtualWire as piVirtualWire
 import pigpio
 from PyQt4.QtGui import (QColor, QPalette)
+import pickle
+from apscheduler.schedulers.background import BackgroundScheduler
 
 #import logging
 
@@ -52,10 +54,10 @@ class DomoControlFrame(QtGui.QDialog):
         ''' Show the icon of the heater '''
         if (control == True):
             #s = "Heater On " 
-            self.ui.label_icon_casa.setPixmap(QtGui.QPixmap(os.getcwd() + "/heater_on.png"))
+            self.ui.label_icon_casa.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/heater_on.png"))
         else:
             #s = "Heater Off"
-            self.ui.label_icon_casa.setPixmap(QtGui.QPixmap(os.getcwd() + "/heater_off.png"))
+            self.ui.label_icon_casa.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/heater_off.png"))
         #self.ui.label_icon_casa.setText(s)
         self.ui.label_icon_casa.update()
     
@@ -120,6 +122,7 @@ class main_thread(QThread):
         self.period_sensor = 60 #segundos
         self.period_ldr = 5 #segundos
         self.pir_state = False
+        self.watchdog_counter = 0
         #------------------------------------------
         
         
@@ -128,7 +131,7 @@ class main_thread(QThread):
         self.LOW_TEMP = 18
         self.OFF_TEMP = 10
         self.temp_target = self.OFF_TEMP
-        self.mode = "OFF"   #  AUTO,HIGH,LOW,OFF
+        self.mode = "APAGADO"   #  AUTO,T.ALTA,T.BAJA,APAGADO
         self.myapp.setTempTarget(self.temp_target)
         self.hora_start_high = datetime.time(7,0,0)
         self.hora_start_low = datetime.time(0,0,0)
@@ -136,8 +139,25 @@ class main_thread(QThread):
         self.max_time_caldera = 10*60     #10 min max time the caldera can be active
         self.tx_resend = 60 #Resend
         #-------------------------------------------
-
+        try:
+            f = open ('config.pickle','rb')
+            config_list = pickle.load(f)
+            f.close()
+            self.mode = config_list[0]
+            if config_list[0] == "AUTO":
+                self.myapp.modeAuto()
+            elif config_list[0] == "T.ALTA":
+                self.myapp.modeAlta()
+            elif config_list[0] == "T.BAJA":
+                self.myapp.modeBaja()
+            else:
+                self.myapp.modeApagado()
+                
+            self.watchdog_counter = config_list[1]
+        except:
+            print ('Error opening config file')
         
+        #-------------------------------------------
         #PINES
         self.pin_sensor_temp = 12
         self.pin_pir = 20
@@ -203,12 +223,12 @@ class main_thread(QThread):
             self.sensor_temp =tools.getMedia(self.temp_list, temperature)
             #print self.temp_list[0],self.temp_list[1],self.temp_list[2],self.sensor_temp
             #self.sensor_humidity =tools.getMedia(self.humi_list, humidity)
-            print self.sensor_temp,self.sensor_humidity
+            print (self.sensor_temp,self.sensor_humidity)
             self.real_temp = tools.get_real_temp(self.sensor_temp,self.sensor_humidity)
             #
             self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp, self.real_temp)
         else:
-            print 'Error lectura sensor DHT22'
+            print ('Error lectura sensor DHT22')
 ##            logging.warning('Error lectura sensor DHT11')
             self.num_failures+=1
             
@@ -288,12 +308,12 @@ class main_thread(QThread):
             self._putEmoncmsData(0,'"heat":1')
             self.start_heater_on = time.time()
             self.start_cycle_caldera = time.time()
-            print "Heater ON"
+            print ("Heater ON")
 ##            logging.info('Heater ON')
         if (self.real_temp >= self.temp_target or caldera_enable == False) and self.caldera == True:
             #disable caldera
             self.caldera = False
-            print "Heater OFF"
+            print ("Heater OFF")
 ##            logging.info('Heater ON')
             self._putEmoncmsData(0,'"heat":0')
             
@@ -308,8 +328,11 @@ class main_thread(QThread):
             msg = "0001-OFF"
             if self.caldera == True:
                 msg = "0001-ON_"
-            self.radio_tx.put(msg)
-            print "Tx radio: "+msg
+            result = self.radio_tx.put(msg)
+            if result == True: 
+                print ("Tx radio: "+msg)
+            else: 
+                print ("Tx Error sending")
         #-----------------------------------------------------
         
         ''' control the led '''
@@ -383,10 +406,24 @@ class main_thread(QThread):
         dataList = np.array([self.real_temp, self.sensor_temp,self.sensor_humidity, self.caldera])
         self.data.write(dataList)
         
+    def _write_config(self):
+        self.watchdog_counter += 1
+        config_list = [self.mode,self.watchdog_counter]
+        f = open ('config.pickle','wb')
+        pickle.dump(config_list,f)
+        f.close()
+        
+        
 
     def run(self):
         print('Thread is started' )
 ##        watchdog = tools.Watchdog(60, self._watchdogHandler)
+        #Start CONFIC scheduler --------------
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(self._write_config, 'interval', seconds=5)
+        scheduler.start()
+        #-------------------------------------------------------
+
         self._get_temp()
         time.sleep(2)
         self._get_temp()

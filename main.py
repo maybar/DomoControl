@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: Windows-1252 -*-
 import os,sys
 import numpy as np
@@ -16,6 +16,7 @@ import pigpio
 from PyQt4.QtGui import (QColor, QPalette)
 import pickle
 from apscheduler.schedulers.background import BackgroundScheduler
+from PyQt4.QtGui import QApplication
 
 #import logging
 
@@ -53,12 +54,9 @@ class DomoControlFrame(QtGui.QDialog):
     def show_heater(self, control):
         ''' Show the icon of the heater '''
         if (control == True):
-            #s = "Heater On " 
             self.ui.label_icon_casa.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/heater_on.png"))
         else:
-            #s = "Heater Off"
             self.ui.label_icon_casa.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/heater_off.png"))
-        #self.ui.label_icon_casa.setText(s)
         self.ui.label_icon_casa.update()
     
     def showPirState(self,pir_state):
@@ -189,7 +187,8 @@ class main_thread(QThread):
         self.humi_list = np.array([50.0,50.0,50.0])
         
         #Timers
-        self.start_sensor_time=time.time()-self.period_sensor
+        self.timer_sensor = tools.Timer(self.period_sensor)
+        #self.start_sensor_time=time.time()-self.period_sensor
         self.start_cycle_caldera = time.time()-self.cycle_caldera
         self.start_heater_on = time.time()-self.max_time_caldera
         self.start_ldr_time = time.time()-self.period_ldr
@@ -240,6 +239,8 @@ class main_thread(QThread):
         
     #   
     def _temperatureControl(self):
+        send_emomcms_data = False
+        
         ''' Implements the control function of temperature '''
         ahora_tmp = datetime.datetime.now()
         ahora = datetime.time(ahora_tmp.hour,ahora_tmp.minute,ahora_tmp.second)
@@ -290,22 +291,18 @@ class main_thread(QThread):
         # -----------------------------------------------------
         
         # Cycle to read sensor --------------------------------------
-        if (time.time()-self.start_sensor_time) > self.period_sensor :
+        if self.timer_sensor.expired():
             old_temp=self.sensor_temp
             old_hum=self.sensor_humidity
             self._get_temp()
-            self.start_sensor_time=time.time()
-            if old_temp != self.sensor_temp:
-                self._putEmoncmsData(0,'"temp":'+str(self.sensor_temp))
-            if old_hum != self.sensor_humidity:
-                self._putEmoncmsData(0,'"hum":'+str(self.sensor_humidity))
+            # Write log on internet
+            send_emomcms_data = True
          
         # Take decition to start the heater ------------------------------------------------------
         old_caldera = self.caldera
         if self.real_temp < self.temp_target and self.caldera == False and caldera_enable == True:
             #active caldera
             self.caldera = True
-            self._putEmoncmsData(0,'"heat":1')
             self.start_heater_on = time.time()
             self.start_cycle_caldera = time.time()
             print ("Heater ON")
@@ -315,12 +312,12 @@ class main_thread(QThread):
             self.caldera = False
             print ("Heater OFF")
 ##            logging.info('Heater ON')
-            self._putEmoncmsData(0,'"heat":0')
             
         # Command the heatter
         if old_caldera != self.caldera:
             self.timer_tx.expired_now()
             self.emit(QtCore.SIGNAL("_updateHeatterWidget(int)"),self.caldera)
+            send_emomcms_data = True
         #-----------------------------------------------------
         
         # The command is periodically transmitted by the Radio
@@ -341,6 +338,13 @@ class main_thread(QThread):
         else:
             self._setLed('GREEN')
         #---------------------------------------------------
+        if send_emomcms_data == True:
+            var_data = '"temp":'+str(self.sensor_temp) + "," + '"hum":'+str(self.sensor_humidity) + ","
+            if self.caldera == True:
+                var_data += '"heat":10'
+            else:
+                var_data += '"heat":0'
+            self._putEmoncmsData(0,var_data)
             
     #   
     def _pirProcess(self):
@@ -354,7 +358,7 @@ class main_thread(QThread):
     def _putEmoncmsData(self, id, var_data):
         s = 'https://emoncms.org/input/post?node='+str(id)+'&fulljson={'+var_data+'}&apikey=9771b32a0de292aabb7f01cfdcad146b'
         #print("EmoncmsData: "+s)
-        #contents = urllib2.urlopen(s).read()
+        contents = urlopen(s).read()
         #print("EmoncmsData "+contents)
 
     def _lightProcess(self):
@@ -407,12 +411,12 @@ class main_thread(QThread):
         self.data.write(dataList)
         
     def _write_config(self):
+        # Write configuration
         self.watchdog_counter += 1
         config_list = [self.mode,self.watchdog_counter]
         f = open ('config.pickle','wb')
         pickle.dump(config_list,f)
         f.close()
-        
         
 
     def run(self):
@@ -441,6 +445,7 @@ class main_thread(QThread):
 ##            watchdog.reset()
             self._writeData()
             time.sleep(0.5)
+            QApplication.processEvents()    #to avoid freze the screen
             
             
         # ... Clean shutdown code here ...

@@ -11,6 +11,8 @@ PyQT4
 sudo apt-get install python3-pyqt4
 
 
+pip3 install apscheduler
+
 
 #Ventana
 Creada con QTDesigner

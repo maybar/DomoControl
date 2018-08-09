@@ -15,7 +15,7 @@ import piVirtualWire.piVirtualWire as piVirtualWire
 import pigpio
 from PyQt4.QtGui import (QColor, QPalette)
 import pickle
-from apscheduler.schedulers.background import BackgroundScheduler
+#from apscheduler.schedulers.background import BackgroundScheduler
 from PyQt4.QtGui import QApplication
 
 #import logging
@@ -193,6 +193,7 @@ class main_thread(QThread):
         self.start_heater_on = time.time()-self.max_time_caldera
         self.start_ldr_time = time.time()-self.period_ldr
         self.timer_tx = tools.Timer(self.tx_resend)
+        self.timer_config = tools.Timer(5)     #timer to write de config data
         #-----------------------------------------------
         
         self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp, self.real_temp)
@@ -358,7 +359,10 @@ class main_thread(QThread):
     def _putEmoncmsData(self, id, var_data):
         s = 'https://emoncms.org/input/post?node='+str(id)+'&fulljson={'+var_data+'}&apikey=9771b32a0de292aabb7f01cfdcad146b'
         #print("EmoncmsData: "+s)
-        contents = urlopen(s).read()
+        try:
+            contents = urlopen(s).read()
+        except:
+            print ("Error sending data to Emoncms")
         #print("EmoncmsData "+contents)
 
     def _lightProcess(self):
@@ -410,22 +414,23 @@ class main_thread(QThread):
         dataList = np.array([self.real_temp, self.sensor_temp,self.sensor_humidity, self.caldera])
         self.data.write(dataList)
         
-    def _write_config(self):
-        # Write configuration
-        self.watchdog_counter += 1
-        config_list = [self.mode,self.watchdog_counter]
-        f = open ('config.pickle','wb')
-        pickle.dump(config_list,f)
-        f.close()
+    def _writeConfig(self):
+        if (self.timer_config.expired() == True):
+            # Write configuration
+            self.watchdog_counter += 1
+            config_list = [self.mode,self.watchdog_counter]
+            f = open ('config.pickle','wb')
+            pickle.dump(config_list,f)
+            f.close()
         
 
     def run(self):
         print('Thread is started' )
 ##        watchdog = tools.Watchdog(60, self._watchdogHandler)
         #Start CONFIC scheduler --------------
-        scheduler = BackgroundScheduler()
-        scheduler.add_job(self._write_config, 'interval', seconds=5)
-        scheduler.start()
+        #scheduler = BackgroundScheduler()
+        #scheduler.add_job(self._write_config, 'interval', seconds=5)
+        #scheduler.start()
         #-------------------------------------------------------
 
         self._get_temp()
@@ -444,6 +449,7 @@ class main_thread(QThread):
             #self._alarm_control()
 ##            watchdog.reset()
             self._writeData()
+            self._writeConfig()
             time.sleep(0.5)
             QApplication.processEvents()    #to avoid freze the screen
             

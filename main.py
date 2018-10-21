@@ -213,18 +213,23 @@ class main_thread(QThread):
             self.wait()
     
     def _get_temp(self):
-
         #humidity, temperature = Adafruit_DHT.read_retry(11, self.pin_sensor_temp)
-        humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.AM2302, self.pin_sensor_temp)
+        humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, self.pin_sensor_temp)
         self.num_read+=1
         if humidity is not None and temperature is not None and humidity <= 100.0 and humidity >= 0.0:
+            #redondear
             self.sensor_temp = round(temperature,1) #1 decimal
             self.sensor_humidity = round(humidity,1)
-            self.sensor_temp =tools.getMedia(self.temp_list, temperature)
+            
+            #Compensate the error in temperature
+            self.sensor_temp = self.sensor_temp - 2.1
+            
+            #media
+            self.sensor_temp =tools.getMedia(self.temp_list, self.sensor_temp)
             #print self.temp_list[0],self.temp_list[1],self.temp_list[2],self.sensor_temp
-            #self.sensor_humidity =tools.getMedia(self.humi_list, humidity)
             print (self.sensor_temp,self.sensor_humidity)
-            self.real_temp = tools.get_real_temp(self.sensor_temp,self.sensor_humidity)
+            #self.real_temp = tools.get_real_temp(self.sensor_temp,self.sensor_humidity)
+            self.real_temp = self.sensor_temp;
             #
             self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp, self.real_temp)
         else:

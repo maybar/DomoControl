@@ -203,7 +203,7 @@ class main_thread(QThread):
         #Init RADIO Com
         self.pi = pigpio.pi()
         self.radio_tx = piVirtualWire.tx(self.pi, self.pin_tx, 2000) 
-        
+
         
     def __del__(self):
         self.stop()
@@ -504,6 +504,8 @@ def main():
 if __name__ == "__main__":
     #logging.basicConfig(filename='log/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
     logging.basicConfig(format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
+    
+    
     main()
  
 

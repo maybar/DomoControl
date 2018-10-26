@@ -6,6 +6,8 @@ import Grid
 import numpy as np
 import datetime
 import time
+import smtplib
+
 
 #Tabla for Bochorno termico
 humiNames = ['0','5','10','15','20','25','30','35','40','45','50','55','60','65','70','75','80','85','90','95','100']
@@ -140,4 +142,27 @@ class Timer:
     
     def expired_now(self):
         self.start_time = time.time()-self.period
+    
+class Email:
+    def __init__(self, gmail_user, gmail_pass, smtp_server, smtp_port):
+        self.gmail_user = gmail_user
+        self.gmail_pass = gmail_pass
+        self.smtp_server = smtp_server
+        self.smtp_port = smtp_port
+            
+    def send_email(self, recipient, subject, text):
+        smtpserver = smtplib.SMTP(self.smtp_server, self.smtp_port)
+        smtpserver.ehlo()
+        smtpserver.starttls()
+        smtpserver.ehlo
+        smtpserver.login(self.gmail_user, self.gmail_pass) 
+        header = 'To: ' + recipient + '\n' + 'From: ' + self.gmail_user
+        header = header + '\n' + 'Subject:' + subject + '\n'
+        msg = header + '\n' + text+ ' \n\n'
+        smtpserver.sendmail(self.gmail_user, recipient, msg) 
+        smtpserver.close() 
+             
+    
+    
+    
     

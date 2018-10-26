@@ -27,7 +27,7 @@ while(1):
                 print ("except")
             if found == True:
                 break
-        #exit(0)
+        
     elif state == "RUNNING":
         #check if the application is running
         try:

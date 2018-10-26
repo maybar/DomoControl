@@ -15,10 +15,9 @@ import piVirtualWire.piVirtualWire as piVirtualWire
 import pigpio
 from PyQt4.QtGui import (QColor, QPalette)
 import pickle
-#from apscheduler.schedulers.background import BackgroundScheduler
 from PyQt4.QtGui import QApplication
 
-#import logging
+import logging
 
 class DomoControlFrame(QtGui.QDialog):
     ''' .... '''
@@ -153,7 +152,7 @@ class main_thread(QThread):
                 
             self.watchdog_counter = config_list[1]
         except:
-            print ('Error opening config file')
+            logging.error('Error opening config file')
         
         #-------------------------------------------
         #PINES
@@ -182,7 +181,6 @@ class main_thread(QThread):
         #-------------------------------------------
         
         self.data = tools.DataLog("Tiempo,T.Real,T.Sensor,T.Humedad,Caldera")
-        #self.data = open("data.csv", "w")
         self.temp_list = np.array([22.0,22.0,22.0])
         self.humi_list = np.array([50.0,50.0,50.0])
         
@@ -222,19 +220,18 @@ class main_thread(QThread):
             self.sensor_humidity = round(humidity,1)
             
             #Compensate the error in temperature
-            self.sensor_temp = self.sensor_temp - 2.1
+            self.sensor_temp = self.sensor_temp - 2.2
             
             #media
             self.sensor_temp =tools.getMedia(self.temp_list, self.sensor_temp)
             #print self.temp_list[0],self.temp_list[1],self.temp_list[2],self.sensor_temp
-            print (self.sensor_temp,self.sensor_humidity)
+            #print (self.sensor_temp,self.sensor_humidity)
             #self.real_temp = tools.get_real_temp(self.sensor_temp,self.sensor_humidity)
             self.real_temp = self.sensor_temp;
             #
             self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp, self.real_temp)
         else:
-            print ('Error lectura sensor DHT22')
-##            logging.warning('Error lectura sensor DHT11')
+            logging.warning('Error lectura sensor DHT11')
             self.num_failures+=1
             
     def _updateBarTimer(self,value):
@@ -311,13 +308,11 @@ class main_thread(QThread):
             self.caldera = True
             self.start_heater_on = time.time()
             self.start_cycle_caldera = time.time()
-            print ("Heater ON")
-##            logging.info('Heater ON')
+            logging.info('Heater ON')
         if (self.real_temp >= self.temp_target or caldera_enable == False) and self.caldera == True:
             #disable caldera
             self.caldera = False
-            print ("Heater OFF")
-##            logging.info('Heater ON')
+            logging.info('Heater OFF')
             
         # Command the heatter
         if old_caldera != self.caldera:
@@ -331,11 +326,16 @@ class main_thread(QThread):
             msg = "0001-OFF"
             if self.caldera == True:
                 msg = "0001-ON_"
-            result = self.radio_tx.put(msg)
-            if result == True: 
-                print ("Tx radio: "+msg)
+            result = False
+            try:
+                result = self.radio_tx.put(msg)
+            except:
+                logging.error("EXCEPTION: self.radio_tx.put")
+            if result == True:
+                s="Tx radio: "+msg
+                logging.info(s)
             else: 
-                print ("Tx Error sending")
+                logging.error("Tx Error sending")
         #-----------------------------------------------------
         
         ''' control the led '''
@@ -367,7 +367,7 @@ class main_thread(QThread):
         try:
             contents = urlopen(s).read()
         except:
-            print ("Error sending data to Emoncms")
+            logging.error ("Error sending data to Emoncms")
         #print("EmoncmsData "+contents)
 
     def _lightProcess(self):
@@ -430,7 +430,7 @@ class main_thread(QThread):
         
 
     def run(self):
-        print('Thread is started' )
+        logging.info('Thread is started' )
 ##        watchdog = tools.Watchdog(60, self._watchdogHandler)
         #Start CONFIC scheduler --------------
         #scheduler = BackgroundScheduler()
@@ -447,20 +447,23 @@ class main_thread(QThread):
         #self.connect(self, QtCore.SIGNAL("_updateBarTimer(int)"),self._updateBarTimer)
         self.connect(self, QtCore.SIGNAL("_updateHeatterWidget(int)"),self._updateHeatterWidget)
         while not self.stopped:
-            #self._rx_radio_process()
-            self._temperatureControl()
-            self._pirProcess()
-            #self._lightProcess()
-            #self._alarm_control()
-##            watchdog.reset()
-            self._writeData()
-            self._writeConfig()
-            time.sleep(0.5)
-            QApplication.processEvents()    #to avoid freze the screen
+            try:
+                #self._rx_radio_process()
+                self._temperatureControl()
+                self._pirProcess()
+                #self._lightProcess()
+                #self._alarm_control()
+##              watchdog.reset()
+                self._writeData()
+                self._writeConfig()
+                time.sleep(0.5)
+                QApplication.processEvents()    #to avoid freze the screen
+            except:
+                logging.critical('Error loop run')
             
             
         # ... Clean shutdown code here ...
-        print('Thread is stopped' )
+        logging.info('Thread is stopped' )
         GPIO.output(self.pin_caldera,False)
         self.data.close()
         GPIO.cleanup() # this ensures a clean exit 
@@ -471,20 +474,18 @@ class main_thread(QThread):
         self.stopped = 1
 
 def main():
+        logging.info("MAIN Function")
         app = QtGui.QApplication(sys.argv)
         myapp = DomoControlFrame()
         myapp.showFullScreen()
         #myapp.show()
-        
-##        logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-##        logging.basicConfig(filename='main.log',level=logging.DEBUG)
         
         ''' Main Loop '''
         try:    
             mainThread = main_thread(myapp)
             mainThread.start()
         except KeyboardInterrupt:
-              print ("KeyboardInterrupt")  
+              logging.info("KeyboardInterrupt")  
 ##        except:
 ##            print ("Error starting the Main thread")
 
@@ -492,17 +493,17 @@ def main():
         try:
             sys.exit(app.exec_())
         except:
-            print ("except app.exec")
+            logging.info("except app.exec")
             GPIO.cleanup() # this ensures a clean exit 
         finally:  
             #GPIO.cleanup() # this ensures a clean exit  
             mainThread.stop()
-            print ("finally app.exec")
-
-
+            logging.info("finally app.exec")
 
 
 if __name__ == "__main__":
+    #logging.basicConfig(filename='log/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
+    logging.basicConfig(format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
     main()
  
 

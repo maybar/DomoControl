@@ -8,16 +8,17 @@ from PyQt4.QtCore import QThread, Qt
 import RPi.GPIO as GPIO
 import time
 import datetime
-from urllib.request import urlopen
+from urllib.request import urlopen, urlretrieve
 import tools
 #RADIO communication
 import piVirtualWire.piVirtualWire as piVirtualWire
 import pigpio
 from PyQt4.QtGui import (QColor, QPalette)
 import pickle
-from PyQt4.QtGui import QApplication
+from PyQt4.QtGui import QApplication, QMessageBox
 
 import logging
+from weather import Weather, Unit
 
 class DomoControlFrame(QtGui.QDialog):
     ''' .... '''
@@ -28,21 +29,26 @@ class DomoControlFrame(QtGui.QDialog):
         self.ui = Ui_MainDialog()
         #Add controls
         self.ui.setupUi(self)
+        self.ui.btn_alta.setEnabled(True)
+        self.ui.btn_baja.setEnabled(True)
+        self.ui.btn_auto.setEnabled(True)
+        self.ui.btn_apagado.setEnabled(True)
         self.ui.btn_alta.clicked.connect(self.modeAlta)
         self.ui.btn_baja.clicked.connect(self.modeBaja)
         self.ui.btn_auto.clicked.connect(self.modeAuto)
         self.ui.btn_apagado.clicked.connect(self.modeApagado)
+        self.ui.btn_test.clicked.connect(self.test)
         self.mode = "APAGADO"
 
 
-    def show_temp_humi(self,humidity, temperature, temp_real):
+    def show_temp_humi(self,humidity, temperature):
         ''' Show the temperature and humidity in the LCD widgets '''
         self.ui.lcdTemp.display(temperature)
         self.ui.lcdTemp.update()
         self.ui.lcdHum.display(humidity)
         self.ui.lcdHum.update()
-        self.ui.lcdTempReal.display(temp_real)
-        self.ui.lcdTempReal.update()
+        #self.ui.lcdTempReal.display(temp_real)
+        #self.ui.lcdTempReal.update()
  
     def setTempTarget(self,temperature):
         ''' Show the temperature target '''
@@ -62,11 +68,19 @@ class DomoControlFrame(QtGui.QDialog):
         ''' Show the PIR state '''
         if pir_state == True:
             self.ui.label_pir.setText("Presencia")
+            #print ("Presencia")
         else:
             self.ui.label_pir.setText("   -     ")
+            #print ("No Presencia")
 
     def showLightValue(self,value):
         self.ui.label_light.setText("Iluminación: "+str(value)+"%")
+        
+    def showWeather(self, rich_text):
+        self.ui.text_weather.setHtml(rich_text)
+        self.ui.text_weather.update()
+        self.ui.icon_condition.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/icon_weather.gif"))
+        self.ui.icon_condition.update()
     
     def setTime(self,ahora):
         ''' Show the hour '''
@@ -98,6 +112,19 @@ class DomoControlFrame(QtGui.QDialog):
 
     def getMode(self):
         return self.mode
+    
+    def test(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+
+        msg.setText("This is a message box")
+        msg.setInformativeText("This is additional information")
+        msg.setWindowTitle("MessageBox demo")
+        msg.setDetailedText("The details are as follows:")
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        #msg.buttonClicked.connect(msgbtn)
+        
+        retval = msg.exec_()
 
 
 class main_thread(QThread):
@@ -119,7 +146,9 @@ class main_thread(QThread):
         self.period_sensor = 60 #segundos
         self.period_ldr = 5 #segundos
         self.pir_state = False
+        self.presence = False
         self.watchdog_counter = 0
+        self.temp_external = 22
         #------------------------------------------
         
         
@@ -135,6 +164,8 @@ class main_thread(QThread):
         self.cycle_caldera = 15*60     #15 o 20 minutos
         self.max_time_caldera = 10*60     #10 min max time the caldera can be active
         self.tx_resend = 60 #Resend
+        self.location = "Usurbil"
+        self.cond_protection = True
         #-------------------------------------------
         try:
             f = open ('config.pickle','rb')
@@ -180,7 +211,7 @@ class main_thread(QThread):
         GPIO.setup(self.pin_sensor_temp, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
         #-------------------------------------------
         
-        self.data = tools.DataLog("Tiempo,T.Real,T.Sensor,T.Humedad,Caldera")
+        self.data = tools.DataLog("Tiempo,T.Real,T.Sensor,T.Humedad,Caldera, Presence")
         self.temp_list = np.array([22.0,22.0,22.0])
         self.humi_list = np.array([50.0,50.0,50.0])
         
@@ -192,9 +223,11 @@ class main_thread(QThread):
         self.start_ldr_time = time.time()-self.period_ldr
         self.timer_tx = tools.Timer(self.tx_resend)
         self.timer_config = tools.Timer(5)     #timer to write de config data
+        self.timer_pir = tools.Timer(50)
+        self.timer_weather = tools.Timer(900) #update each 15 min
         #-----------------------------------------------
         
-        self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp, self.real_temp)
+        self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp)
         self.myapp.setTempTarget(self.temp_target)
         self.myapp.setBarTimerMaximum(self.cycle_caldera)
         self.myapp.setBarTimerValue(self.cycle_caldera)
@@ -229,7 +262,7 @@ class main_thread(QThread):
             #self.real_temp = tools.get_real_temp(self.sensor_temp,self.sensor_humidity)
             self.real_temp = self.sensor_temp;
             #
-            self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp, self.real_temp)
+            self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp)
         else:
             logging.warning('Error lectura sensor DHT11')
             self.num_failures+=1
@@ -239,6 +272,9 @@ class main_thread(QThread):
     
     def _updateHeatterWidget(self,value):
         self.myapp.show_heater(value)
+        
+    def _updateWeatherText(self,value):
+        self.myapp.showWeather(value)
         
     #   
     def _temperatureControl(self):
@@ -263,7 +299,19 @@ class main_thread(QThread):
             self.temp_target = self.LOW_TEMP
         else:
             self.temp_target = self.OFF_TEMP
-            
+        
+        #protection
+        if self.cond_protection == True:
+            if self.temp_external < 0:
+                self.temp_target = 18
+            elif self.temp_external < 5:
+                self.temp_target = 19
+            elif self.temp_external < 10:
+                self.temp_target = 20
+            else:
+                pass
+        
+        #
         if self.temp_target != temp_target:
             self.myapp.setTempTarget(self.temp_target)
         # ------------------------------------------------
@@ -355,10 +403,25 @@ class main_thread(QThread):
     #   
     def _pirProcess(self):
         # Implements the movement detection function 
+        old_presence = self.presence
         old_pir_state = self.pir_state
-        self.pir_state = GPIO.input(self.pin_pir)
-        if old_pir_state != self.pir_state:
-            self.myapp.showPirState(self.pir_state)
+        new_pir_state = GPIO.input(self.pin_pir)
+        #print(old_pir_state, new_pir_state)
+        if (old_pir_state == False) and (new_pir_state == 1):
+            #print ("restart up")
+            self.timer_pir.start(40)
+        if (new_pir_state == True) and (self.timer_pir.expired()):
+            self.presence = True
+        if (old_pir_state == True) and (new_pir_state == 0):
+            #print ("restart down")
+            self.timer_pir.start(20)
+        if (new_pir_state == False) and (self.timer_pir.expired()):
+            self.presence = False
+            
+        if old_presence != self.presence:
+            self.myapp.showPirState(self.presence)
+          
+        self.pir_state =  new_pir_state; 
         return
     
     def _putEmoncmsData(self, id, var_data):
@@ -392,7 +455,26 @@ class main_thread(QThread):
             GPIO.setup(self.pin_ldr_discharge,GPIO.OUT)
             GPIO.output(self.pin_ldr_discharge, False)
             
-    
+    def _weather_process(self):
+        'Show the external weather information' 
+        if (self.timer_weather.expired() == True):
+            weather = Weather(unit=Unit.CELSIUS)
+            location = weather.lookup_by_location(self.location)
+            condition = location.condition
+            forecasts = location.forecast
+            s = tools.getRichTextWeather(location, condition, forecasts)
+            self.temp_external = int(condition.temp)
+            #Descargar imagen
+            url_imagen = "http://l.yimg.com/a/i/us/we/52/"+condition.code+".gif" # El link de la imagen
+            print(url_imagen)
+            nombre_local_imagen = os.getcwd() + "/res/icon_weather.gif" # El nombre con el que queremos guardarla
+            try:
+                urlretrieve(url_imagen, nombre_local_imagen)
+            except:
+                logging.error ("Error trying to retrieve the icon weather")
+            self.emit(QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),s)
+
+        
     def _setLed(self, state):
         if state == "RED":
             GPIO.output(self.pin_led_a,True)
@@ -410,13 +492,13 @@ class main_thread(QThread):
         return
     
     def _watchdogHandler(self):
-        #print "Whoa! Watchdog expired. Holy heavens!"
+        logging.critical ("Whoa! Watchdog expired. Holy heavens!")
         GPIO.output(self.pin_caldera,False) #stop caldera
         sys.exit()
         
     def _writeData(self):
         ''' Write data '''
-        dataList = np.array([self.real_temp, self.sensor_temp,self.sensor_humidity, self.caldera])
+        dataList = np.array([self.real_temp, self.sensor_temp,self.sensor_humidity, self.caldera, self.presence])
         self.data.write(dataList)
         
     def _writeConfig(self):
@@ -446,20 +528,22 @@ class main_thread(QThread):
         time.sleep(2)
         #self.connect(self, QtCore.SIGNAL("_updateBarTimer(int)"),self._updateBarTimer)
         self.connect(self, QtCore.SIGNAL("_updateHeatterWidget(int)"),self._updateHeatterWidget)
+        self.connect(self, QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),self._updateWeatherText)
         while not self.stopped:
-            try:
-                #self._rx_radio_process()
-                self._temperatureControl()
-                self._pirProcess()
-                #self._lightProcess()
-                #self._alarm_control()
+            '''try:'''
+            #self._rx_radio_process()
+            self._temperatureControl()
+            self._pirProcess()
+            self._weather_process()
+            #self._lightProcess()
+            #self._alarm_control()
 ##              watchdog.reset()
-                self._writeData()
-                self._writeConfig()
-                time.sleep(0.5)
-                QApplication.processEvents()    #to avoid freze the screen
-            except:
-                logging.critical('Error loop run')
+            self._writeData()
+            self._writeConfig()
+            time.sleep(0.5)
+            QApplication.processEvents()    #to avoid freze the screen
+            '''except:
+                logging.critical('Error loop run')'''
             
             
         # ... Clean shutdown code here ...

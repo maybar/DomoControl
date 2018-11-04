@@ -31,7 +31,9 @@ while(1):
     elif state == "RUNNING":
         #check if the application is running
         try:
-            if not psutil.pid_exists(pid):
+            ST = p.status()
+            if (not psutil.pid_exists(pid)) or (ST == psutil.STATUS_STOPPED) or (ST == psutil.STATUS_ZOMBIE):
+                print (ST)
                 print ("pid does not exist")
                 state = "STOPPED"
                     

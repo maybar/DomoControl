@@ -20,8 +20,8 @@
   <widget class="QLCDNumber" name="lcdTemp">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>250</y>
+     <x>260</x>
+     <y>50</y>
      <width>121</width>
      <height>71</height>
     </rect>
@@ -53,8 +53,8 @@
   <widget class="QLabel" name="label_temp">
    <property name="geometry">
     <rect>
-     <x>60</x>
-     <y>320</y>
+     <x>300</x>
+     <y>120</y>
      <width>61</width>
      <height>31</height>
     </rect>
@@ -74,8 +74,8 @@
   <widget class="QLCDNumber" name="lcdHum">
    <property name="geometry">
     <rect>
-     <x>160</x>
-     <y>250</y>
+     <x>400</x>
+     <y>50</y>
      <width>111</width>
      <height>71</height>
     </rect>
@@ -107,8 +107,8 @@
   <widget class="QLabel" name="label_hum">
    <property name="geometry">
     <rect>
-     <x>190</x>
-     <y>320</y>
+     <x>430</x>
+     <y>120</y>
      <width>61</width>
      <height>31</height>
     </rect>
@@ -128,8 +128,8 @@
   <widget class="QLabel" name="label_icon_casa">
    <property name="geometry">
     <rect>
-     <x>390</x>
-     <y>70</y>
+     <x>320</x>
+     <y>160</y>
      <width>141</width>
      <height>131</height>
     </rect>
@@ -144,59 +144,10 @@
     <set>Qt::AlignCenter</set>
    </property>
   </widget>
-  <widget class="QPushButton" name="btn_alarm">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
-   <property name="geometry">
-    <rect>
-     <x>680</x>
-     <y>80</y>
-     <width>99</width>
-     <height>61</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Alarma</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="btn_alta">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="geometry">
-    <rect>
-     <x>350</x>
-     <y>240</y>
-     <width>99</width>
-     <height>91</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>res/btn_sol.png</normaloff>
-     <activeon>res/btn_sol_g.png</activeon>res/btn_sol.png</iconset>
-   </property>
-   <property name="iconSize">
-    <size>
-     <width>64</width>
-     <height>64</height>
-    </size>
-   </property>
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="autoExclusive">
-    <bool>true</bool>
-   </property>
-  </widget>
   <widget class="QFrame" name="frame">
    <property name="geometry">
     <rect>
-     <x>670</x>
+     <x>10</x>
      <y>60</y>
      <width>121</width>
      <height>181</height>
@@ -222,6 +173,22 @@
     </property>
     <property name="text">
      <string>Config</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btn_alarm">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>20</y>
+      <width>99</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Alarma</string>
     </property>
    </widget>
   </widget>
@@ -260,7 +227,7 @@
     <enum>QFrame::Sunken</enum>
    </property>
    <property name="text">
-    <string>Movimiento</string>
+    <string>-</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_alarm">
@@ -307,9 +274,9 @@
    </property>
    <property name="geometry">
     <rect>
-     <x>600</x>
-     <y>290</y>
-     <width>181</width>
+     <x>110</x>
+     <y>270</y>
+     <width>111</width>
      <height>31</height>
     </rect>
    </property>
@@ -326,118 +293,6 @@
    </property>
    <property name="alignment">
     <set>Qt::AlignCenter</set>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_icon_mode">
-   <property name="geometry">
-    <rect>
-     <x>560</x>
-     <y>10</y>
-     <width>31</width>
-     <height>31</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Icon</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="btn_auto">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="geometry">
-    <rect>
-     <x>470</x>
-     <y>240</y>
-     <width>99</width>
-     <height>91</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>res/btn_auto.png</normaloff>
-     <activeon>res/btn_auto_g.png</activeon>res/btn_auto.png</iconset>
-   </property>
-   <property name="iconSize">
-    <size>
-     <width>64</width>
-     <height>64</height>
-    </size>
-   </property>
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="autoExclusive">
-    <bool>true</bool>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="btn_baja">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="geometry">
-    <rect>
-     <x>350</x>
-     <y>350</y>
-     <width>99</width>
-     <height>91</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>res/btn_luna.png</normaloff>
-     <activeon>res/btn_luna_g.png</activeon>res/btn_luna.png</iconset>
-   </property>
-   <property name="iconSize">
-    <size>
-     <width>64</width>
-     <height>64</height>
-    </size>
-   </property>
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="autoExclusive">
-    <bool>true</bool>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="btn_apagado">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="geometry">
-    <rect>
-     <x>470</x>
-     <y>350</y>
-     <width>99</width>
-     <height>91</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>res/btn_off.png</normaloff>
-     <activeon>res/btn_off_g.png</activeon>res/btn_off.png</iconset>
-   </property>
-   <property name="iconSize">
-    <size>
-     <width>64</width>
-     <height>64</height>
-    </size>
-   </property>
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="autoExclusive">
-    <bool>true</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label_hora">
@@ -459,70 +314,16 @@
     <string>00:00:00</string>
    </property>
   </widget>
-  <widget class="QLCDNumber" name="lcdTempReal">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>80</y>
-     <width>241</width>
-     <height>151</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>20</pointsize>
-     <weight>75</weight>
-     <italic>true</italic>
-     <bold>true</bold>
-    </font>
-   </property>
-   <property name="frameShape">
-    <enum>QFrame::Panel</enum>
-   </property>
-   <property name="frameShadow">
-    <enum>QFrame::Sunken</enum>
-   </property>
-   <property name="lineWidth">
-    <number>4</number>
-   </property>
-   <property name="smallDecimalPoint">
-    <bool>true</bool>
-   </property>
-   <property name="numDigits">
-    <number>4</number>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_temp_real">
-   <property name="geometry">
-    <rect>
-     <x>40</x>
-     <y>50</y>
-     <width>231</width>
-     <height>31</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>16</pointsize>
-     <weight>75</weight>
-     <italic>false</italic>
-     <bold>true</bold>
-    </font>
-   </property>
-   <property name="text">
-    <string>Temperatura Real (ºC)</string>
-   </property>
-  </widget>
   <widget class="QFrame" name="frame_2">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="geometry">
     <rect>
-     <x>320</x>
-     <y>220</y>
-     <width>281</width>
-     <height>251</height>
+     <x>160</x>
+     <y>370</y>
+     <width>461</width>
+     <height>111</height>
     </rect>
    </property>
    <property name="frameShape">
@@ -534,86 +335,294 @@
    <property name="lineWidth">
     <number>5</number>
    </property>
-  </widget>
-  <widget class="QGroupBox" name="groupBox">
-   <property name="geometry">
-    <rect>
-     <x>30</x>
-     <y>360</y>
-     <width>231</width>
-     <height>101</height>
-    </rect>
-   </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="minimumSize">
-    <size>
-     <width>0</width>
-     <height>0</height>
-    </size>
-   </property>
-   <property name="title">
-    <string>Caldera</string>
-   </property>
-   <widget class="QProgressBar" name="barHeaterTimer">
+   <widget class="QPushButton" name="btn_auto">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>70</y>
-      <width>201</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="maximum">
-     <number>15</number>
-    </property>
-    <property name="value">
-     <number>10</number>
-    </property>
-    <property name="format">
-     <string>%p%</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_arm">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>40</y>
-      <width>211</width>
-      <height>20</height>
+      <y>10</y>
+      <width>99</width>
+      <height>91</height>
      </rect>
     </property>
     <property name="text">
-     <string>Caldera disarm</string>
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>res/btn_auto.png</normaloff>
+      <activeon>res/btn_auto_g.png</activeon>res/btn_auto.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>64</width>
+      <height>64</height>
+     </size>
+    </property>
+    <property name="checkable">
+     <bool>true</bool>
+    </property>
+    <property name="autoExclusive">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btn_alta">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>120</x>
+      <y>10</y>
+      <width>99</width>
+      <height>91</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>res/btn_sol.png</normaloff>
+      <activeon>res/btn_sol_g.png</activeon>res/btn_sol.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>64</width>
+      <height>64</height>
+     </size>
+    </property>
+    <property name="checkable">
+     <bool>true</bool>
+    </property>
+    <property name="autoExclusive">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btn_baja">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>230</x>
+      <y>10</y>
+      <width>99</width>
+      <height>91</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>res/btn_luna.png</normaloff>
+      <activeon>res/btn_luna_g.png</activeon>res/btn_luna.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>64</width>
+      <height>64</height>
+     </size>
+    </property>
+    <property name="checkable">
+     <bool>true</bool>
+    </property>
+    <property name="autoExclusive">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btn_apagado">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>340</x>
+      <y>10</y>
+      <width>99</width>
+      <height>91</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>res/btn_off.png</normaloff>
+      <activeon>res/btn_off_g.png</activeon>res/btn_off.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>64</width>
+      <height>64</height>
+     </size>
+    </property>
+    <property name="checkable">
+     <bool>true</bool>
+    </property>
+    <property name="autoExclusive">
+     <bool>true</bool>
     </property>
    </widget>
   </widget>
-  <zorder>groupBox</zorder>
+  <widget class="QProgressBar" name="barHeaterTimer">
+   <property name="geometry">
+    <rect>
+     <x>290</x>
+     <y>340</y>
+     <width>201</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>15</number>
+   </property>
+   <property name="value">
+    <number>10</number>
+   </property>
+   <property name="format">
+    <string>%p%</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_arm">
+   <property name="geometry">
+    <rect>
+     <x>290</x>
+     <y>310</y>
+     <width>211</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Caldera disarm</string>
+   </property>
+  </widget>
+  <widget class="QTextEdit" name="text_weather">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>530</x>
+     <y>50</y>
+     <width>271</width>
+     <height>231</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Ubuntu Condensed</family>
+     <pointsize>11</pointsize>
+     <italic>false</italic>
+    </font>
+   </property>
+   <property name="cursor" stdset="0">
+    <cursorShape>BlankCursor</cursorShape>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::Panel</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Raised</enum>
+   </property>
+   <property name="documentTitle">
+    <string/>
+   </property>
+   <property name="readOnly">
+    <bool>true</bool>
+   </property>
+   <property name="html">
+    <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Ubuntu Condensed'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu'; font-weight:600;&quot;&gt;Usurbil-Spain&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu';&quot;&gt;Fecha&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'Ubuntu';&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu'; font-weight:600;&quot;&gt;Condición actual:&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu';&quot;&gt;Nublado&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu';&quot;&gt;Temperatura: 25ºC&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu';&quot;&gt;Vel. viento: &lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu';&quot;&gt;Humedad:&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu';&quot;&gt;Sol: &lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu'; font-weight:600;&quot;&gt;Pronósticos mañana:&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Courier New,courier';&quot;&gt;Fri Partly Cloudy	62 49&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="textInteractionFlags">
+    <set>Qt::NoTextInteraction</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="icon_condition">
+   <property name="geometry">
+    <rect>
+     <x>730</x>
+     <y>130</y>
+     <width>52</width>
+     <height>52</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap>res/icon_weather.gif</pixmap>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_alarm_2">
+   <property name="geometry">
+    <rect>
+     <x>560</x>
+     <y>10</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::Panel</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Sunken</enum>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="btn_test">
+   <property name="geometry">
+    <rect>
+     <x>670</x>
+     <y>380</y>
+     <width>97</width>
+     <height>81</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Test</string>
+   </property>
+  </widget>
   <zorder>frame_2</zorder>
   <zorder>lcdTemp</zorder>
   <zorder>label_temp</zorder>
   <zorder>lcdHum</zorder>
   <zorder>label_hum</zorder>
   <zorder>label_icon_casa</zorder>
-  <zorder>btn_alarm</zorder>
-  <zorder>btn_alta</zorder>
   <zorder>frame</zorder>
   <zorder>label_temp_target</zorder>
   <zorder>label_pir</zorder>
   <zorder>label_alarm</zorder>
   <zorder>label_light</zorder>
   <zorder>label_mensaje</zorder>
-  <zorder>label_icon_mode</zorder>
-  <zorder>btn_auto</zorder>
-  <zorder>btn_baja</zorder>
-  <zorder>btn_apagado</zorder>
   <zorder>label_hora</zorder>
-  <zorder>lcdTempReal</zorder>
-  <zorder>label_temp_real</zorder>
+  <zorder>barHeaterTimer</zorder>
+  <zorder>label_arm</zorder>
+  <zorder>text_weather</zorder>
+  <zorder>icon_condition</zorder>
+  <zorder>label_alarm_2</zorder>
+  <zorder>btn_test</zorder>
  </widget>
  <resources/>
  <connections/>

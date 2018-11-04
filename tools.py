@@ -90,6 +90,30 @@ def getMedia(lista,newValue):
     salida = round(cocie,1)
     return salida
 
+def getRichTextWeather(location, condition, forecasts):
+    h1 = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd"> \
+    <html><head><meta name="qrichtext" content="1" /><style type="text/css"> \
+    p, li { white-space: pre-wrap; } \
+    </style></head><body style=" font-family:''Ubuntu Condensed''; font-size:11pt; font-weight:400; font-style:normal;">'
+
+    s1 = '<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:''Ubuntu'';">'
+    s2 = '<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:''Ubuntu'';"><br /></p>'
+    s3 = '<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:''Ubuntu''; font-weight:600;">'
+    s = h1 \
+    +s1+location.location.city +" - "+ location.location.region + "</span></p>" \
+    +s1+condition.date + "</span></p>" \
+    +s2 \
+    +s3+"Condiciones actuales:"+ "</span></p>" \
+    +s1+condition.text + "</span></p>" \
+    +s1+condition.temp + " º"+location.units.temperature + "</span></p>" \
+    +s1+location.wind.speed + " "+location.units.speed+ "</span></p>" \
+    +s1+location.atmosphere.humidity + " %</span></p>" \
+    +s1+"Sol: "+location.astronomy.sunrise + " - "+location.astronomy.sunset + "</span></p>"\
+    +s2 \
+    +s3+"Pronóstico para mañana:"+ "</span></p>" \
+    +s1+forecasts[1].day +" "+forecasts[1].text + " Max:"+forecasts[1].high + " Min:"+forecasts[1].low + "</span></p>" 
+    return s
+
 from threading import Timer
 
 class Watchdog:
@@ -112,15 +136,15 @@ class Watchdog:
   
 class DataLog:
     def __init__(self, header):  # name of the file
-        self.file = open("log/DataLog-"+datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+".csv", "w")
+        self.file = open("log/DataLog-"+datetime.datetime.now().strftime("%Y-%m-%d %H:%M")+".csv", "w")
         self.file.write(header+'\n')
-        self.old_data = np.array([0,0,0,0])
+        self.old_data = np.array([0,0,0,0,0])
 
     def write(self, data):
         if np.array_equal(self.old_data,data) == True:
             return 
         
-        s = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","+ str(data[0])+","+ str(data[1])+ ","+ str(data[2])+ ","+ str(data[3])+'\n'
+        s = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ","+ str(data[0])+","+ str(data[1])+ ","+ str(data[2])+ ","+ str(data[3])+","+ str(data[4])+'\n'
         self.file.write(s)
         self.old_data = data
         
@@ -130,6 +154,9 @@ class DataLog:
         
 
 class Timer:
+    def __init__(self): 
+        self.period = 0
+        
     def __init__(self, period):  # timeout in seconds
         self.period = period
         self.expired_now()
@@ -142,6 +169,13 @@ class Timer:
     
     def expired_now(self):
         self.start_time = time.time()-self.period
+        
+    def restart(self):
+        self.start_time = time.time()
+    
+    def start(self, period):
+        self.period = period
+        self.start_time = time.time()
     
 class Email:
     def __init__(self, gmail_user, gmail_pass, smtp_server, smtp_port):

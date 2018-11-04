@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+    
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Domo Control</title>
+        <meta name="description" content="Pagina principal de la centralita domótica Home Control">
+        <!-- Bootstrap CSS CDN -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+        <link rel="stylesheet" href="css/style.css">
+    </head>
+    <body onload="lee_json();">
+         <div class="wrapper">
+            <!-- Sidebar Holder -->
+            <nav id="sidebar">
+                <div class="sidebar-header">
+                    <h3>Menu</h3>
+                </div>
+
+                <ul class="list-unstyled components">
+                    <li>
+                        <a href="index.html">Estado</a>
+                    </li>
+                    <li>
+                        <a href="config.html">Configuración</a>
+                    </li>
+                     <li>
+                        <a href="manual.html">Manual</a>
+                    </li>
+                </ul>
+
+            </nav>
+
+            <!-- Page Content Holder -->
+            <div id="content">
+
+                <h2>Centralita domótica</h2>
+                <p>Bienvenidos a la página de la centralita domótica de tu casa.</p>
+                <p>Esta página permite acceder a la configuración de la centralita y al manual de usuario.</p>
+                <h2>Estado</h2>
+                <h2>Parámetros de Temperatura</h2>
+                <div id="container">
+                    <div id="output1">nada aun                  
+                    </div>
+                    <div id="output2">nada aun                  
+                    </div>
+                    <div id="output3">nada aun                  
+                    </div>
+                </div>
+                <script src="js/script.js"></script>
+
+            </div>
+        </div>
+
+        <!-- jQuery CDN -->
+         <script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+         <!-- Bootstrap Js CDN -->
+         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+         <script type="text/javascript">
+             $(document).ready(function () {
+                 $('#sidebarCollapse').on('click', function () {
+                     $('#sidebar').toggleClass('active');
+                 });
+             });
+         </script>
+        
+    </body>
+</html>
+

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+    
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Domo Control</title>
+        <meta name="description" content="Pagina principal de la centralita domótica Home Control">
+        <!-- Bootstrap CSS CDN -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+        <link rel="stylesheet" href="css/style.css">
+        <script src="js/script.js"></script>
+    </head>
+    <body>
+         <div class="wrapper">
+            <!-- Sidebar Holder -->
+            <nav id="sidebar">
+                <div class="sidebar-header">
+                    <h3>Menu</h3>
+                </div>
+
+                <ul class="list-unstyled components">
+                    <li>
+                        <a href="index.html">Estado</a>
+                    </li>
+                    <li>
+                        <a href="config.html">Configuración</a>
+                    </li>
+                     <li>
+                        <a href="manual.html">Manual</a>
+                    </li>
+                </ul>
+
+            </nav>
+
+            <!-- Page Content Holder -->
+            <div id="content">
+                <h1>Configuración de la centralita domótica</h1>
+                <p>Esta página permite acceder a la configuración de la centralita.</p>
+                <p>Al finalizar la modificación de los parámetros es necesario pulsar el botón enviar. La centralita se reiniciará automaticamente </p>
+                <div id="output1">....                  
+                    </div>
+                <h2>Control de temperatura</h2>
+                <div id="container">
+                    <form action = "/cgi-bin/write_config.py" method = "get">
+                        <div class="row">
+                            <div class="col-sm-4">
+                                Temperatura confort: <input type = "number" id="T1" name="temp_1" max="30" min="0"> <br />
+                            </div>
+                            <div class="col-sm-8">  
+                                <p>La temperatura de confort es la temperatura objetivo cuando se selecciona el modo "Confort" (símbolo del sol). Este modo mantiene caliente la casa, pero consume mas energía. Se recomienda el usos durante el día.</p> <br />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4">  
+                                Temperatura ahorro : <input type = "number" id="T2" name="temp_2" max="30" min="0"> <br />
+                            </div>
+                            <div class="col-sm-8">  
+                                <p>La temperatura de ahorro es la temperatura objetivo cuando se selecciona el modo "Ahorro" (símbolo de la luna). Este modo no mantiene tan caliente la casa, pero no consume tanta energía. Se recomienda el uso durante la noche o cuando durante el día no estamos en la casa.</p> <br />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4">
+                                Temperatura viaje  : <input type = "number" id="T3" name="temp_3" max="30" min="0"> <br />  
+                            </div>
+                            <div class="col-sm-8">  
+                                <p>La temperatura de viaje es la temperatura objetivo cuando se selecciona el modo "Viaje" (símbolo de la maleta). Este modo mantiene la temperatura al minimo necesario para que no estropee las cañerias o ningun equipo de la casa. Se recomienda el uso cuando abandonamos la casa por periodos de tiempo largos (vacaciones, ...).</p> <br />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4">
+                                Limitador temperatura <input type="checkbox" id="LIM" name="lim_1" value="False"><br>
+                            </div>    
+                            <div class="col-sm-8">  
+                                <p>Para evitar cindesación de la humedad los dias muy frios, se recomienda mantener activado el limitador de calefacción para que se ajuste automáticamente de acuerdo a la temperatura exterior. Cuando se usa el limitador de temperatura, la temperatura se limita de la suigiente forma:</p>
+                                <li>20ºC cuando la temperatura exterior esta entre 5-10ºC</li>
+                                <li>19ºC cuando la temperatura exterior esta entre 0-5ºC</li>
+                                <li>18ºC cuando la temperatura exterior es menor de 0ºC</li> <br />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <h3>Horario de inicio de confort (modo automático)</h3>
+                            <div class="col-sm-4">
+                                Hora: <input type = "number" id="H1" name="hora_1" size="1" max="23" min="0"  value="7" size="2"> 
+                                Minuto: <input type = "number" id="M1" name="min_1" size="1" max="59" min="0" value="0" size="2"> <br />  
+                            </div>
+                            <div class="col-sm-8">  
+                                <p>Cuando el modo automático está activado esta es la hora en la que se activa el modo confort. Por defecto es a las 7:00 </p> <br />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <h3>Horario de inicio de ahorro (modo automático)</h3>
+                            <div class="col-sm-4">
+                                Hora: <input type = "number" id="H2" name="hora_2" size="1" max="23" min="0" value="0" size="2">  
+                                Minuto: <input type = "number" id="M2" name="min_2" size="1" max="59" min="0" value="0" size="2"> <br />  
+                            </div>
+                            <div class="col-sm-8">  
+                                <p>Cuando el modo automático está activado esta es la hora en la que se activa el modo ahorro. Por defecto es a las 00:00 </p> <br />
+                            </div>
+                        </div>
+                        <input type = "submit" value = "Enviar" />
+                    </form>
+                </div>
+            </div>
+        </div>
+        <script >
+            lee_json();
+        </script>
+        <!-- jQuery CDN -->
+         <script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+         <!-- Bootstrap Js CDN -->
+         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js">
+        </script>
+
+         <script type="text/javascript">
+             $(document).ready(function () {
+                 $('#sidebarCollapse').on('click', function () {
+                     $('#sidebar').toggleClass('active');
+                 });
+             });
+         </script>
+        
+    </body>
+</html>
+

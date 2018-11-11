@@ -1,6 +1,6 @@
 
 function lee_json() {
-    var output1 = document.getElementById('output1');
+    //var output1 = document.getElementById('output1');
     //output1.innerHTML = "leyendo....";
     var xmlhttp = new XMLHttpRequest();
     var url = "http://192.168.1.109:8000/config.json";

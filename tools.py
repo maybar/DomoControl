@@ -176,6 +176,9 @@ class Timer:
     def start(self, period):
         self.period = period
         self.start_time = time.time()
+        
+    def elapsed(self):
+        return time.time()-self.start_time
     
 class Email:
     def __init__(self, gmail_user, gmail_pass, smtp_server, smtp_port):

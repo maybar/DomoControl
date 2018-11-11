@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: Windows-1252 -*-
+
 import os,sys
 import numpy as np
 import Adafruit_DHT
@@ -19,6 +20,8 @@ from PyQt4.QtGui import QApplication, QMessageBox
 
 import logging
 from weather import Weather, Unit
+import constants as const
+import psutil
 
 class DomoControlFrame(QtGui.QDialog):
     ''' .... '''
@@ -39,6 +42,7 @@ class DomoControlFrame(QtGui.QDialog):
         self.ui.btn_apagado.clicked.connect(self.modeApagado)
         self.ui.btn_test.clicked.connect(self.test)
         self.mode = "APAGADO"
+        self.old_bar_timer_value = 99
 
 
     def show_temp_humi(self,humidity, temperature):
@@ -90,14 +94,16 @@ class DomoControlFrame(QtGui.QDialog):
         self.ui.barHeaterTimer.setMaximum(max)
         
     def setBarTimerValue(self,value):
-        self.ui.barHeaterTimer.setValue(value)
-        '''p = self.ui.barHeaterTimer.palette()
-        p.setColor(QPalette.Highlight, QColor(Qt.red))
-        self.ui.barHeaterTimer.setPalette(p)
-        self.ui.barHeaterTimer.show()'''
-        self.ui.barHeaterTimer.setStyleSheet("background:'red';")
-        self.ui.barHeaterTimer.update()
-        
+        if self.old_bar_timer_value != value:
+            self.ui.barHeaterTimer.setValue(value)
+            '''p = self.ui.barHeaterTimer.palette()
+            p.setColor(QPalette.Highlight, QColor(Qt.red))
+            self.ui.barHeaterTimer.setPalette(p)
+            self.ui.barHeaterTimer.show()'''
+            #self.ui.barHeaterTimer.setStyleSheet("background:'red';")
+            self.ui.barHeaterTimer.update()
+            self.old_bar_timer_value = value
+            
     def modeAlta(self):
         self.mode = "T.ALTA"
             
@@ -116,21 +122,26 @@ class DomoControlFrame(QtGui.QDialog):
     def test(self):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
-
-        msg.setText("This is a message box")
-        msg.setInformativeText("This is additional information")
-        msg.setWindowTitle("MessageBox demo")
-        msg.setDetailedText("The details are as follows:")
-        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        p = psutil.Process()
+        pid = os.getpid()
+        ST = p.status()
+        msg.setWindowTitle("Test MessageBox")
+        msg.setText("Process status: "+ST+"\n"+"PID: "+str(pid))
+        #msg.setInformativeText("This is additional information")
+        
+        #msg.setDetailedText(s)
+ 
+        #msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
         #msg.buttonClicked.connect(msgbtn)
         
         retval = msg.exec_()
 
 
 class main_thread(QThread):
-    # Thread implementing the main loop 
+    ''' Thread implementing the main loop '''
+
     def __init__(self,myapp):
-        # Constructor 
+        ''' Constructor '''
         #Important to avoid: QThread : Destroyed while thread is still running
         super(main_thread, self).__init__(myapp)
         
@@ -163,7 +174,6 @@ class main_thread(QThread):
         self.hora_start_low = datetime.time(0,0,0)
         self.cycle_caldera = 15*60     #15 o 20 minutos
         self.max_time_caldera = 10*60     #10 min max time the caldera can be active
-        self.tx_resend = 60 #Resend
         self.location = "Usurbil"
         self.cond_protection = True
         #-------------------------------------------
@@ -184,31 +194,19 @@ class main_thread(QThread):
             self.watchdog_counter = config_list[1]
         except:
             logging.error('Error opening config file')
-        
-        #-------------------------------------------
-        #PINES
-        self.pin_sensor_temp = 12
-        self.pin_pir = 20
-        self.pin_led_a = 6
-        self.pin_led_b = 5
-        self.pin_ldr_charge = 19
-        self.pin_ldr_discharge = 13
-        self.pin_tx = 14
-        #self.pin_rx = 
-        #-------------------------------------------
 
         
         #Config GPIO
         GPIO.setmode(GPIO.BCM)
         #configure the pin of PIR
-        GPIO.setup(self.pin_pir,GPIO.IN)
+        GPIO.setup(const.PIN_PIR, GPIO.IN)
         #configure the pines to control the bicolor led
-        GPIO.setup(self.pin_led_a,GPIO.OUT)
-        GPIO.setup(self.pin_led_b,GPIO.OUT)
+        GPIO.setup(const.PIN_LED_A,GPIO.OUT)
+        GPIO.setup(const.PIN_LED_B,GPIO.OUT)
         #configure the pines for light sensor
-        GPIO.setup(self.pin_ldr_charge,GPIO.IN)
-        GPIO.setup(self.pin_ldr_discharge,GPIO.IN) 
-        GPIO.setup(self.pin_sensor_temp, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
+        GPIO.setup(const.PIN_LDR_CHARGE,GPIO.IN)
+        GPIO.setup(const.PIN_LDR_DISCHARGE, GPIO.IN) 
+        GPIO.setup(const.PIN_SENSOR_TEMP, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
         #-------------------------------------------
         
         self.data = tools.DataLog("Tiempo,T.Real,T.Sensor,T.Humedad,Caldera, Presence")
@@ -217,25 +215,25 @@ class main_thread(QThread):
         
         #Timers
         self.timer_sensor = tools.Timer(self.period_sensor)
-        #self.start_sensor_time=time.time()-self.period_sensor
-        self.start_cycle_caldera = time.time()-self.cycle_caldera
-        self.start_heater_on = time.time()-self.max_time_caldera
+        self.timer_cycle_caldera = tools.Timer(self.cycle_caldera)
+        self.timer_heater_on = tools.Timer(self.max_time_caldera)
         self.start_ldr_time = time.time()-self.period_ldr
-        self.timer_tx = tools.Timer(self.tx_resend)
+        self.timer_tx = tools.Timer(const.TX_RESEND)
         self.timer_config = tools.Timer(5)     #timer to write de config data
         self.timer_pir = tools.Timer(50)
         self.timer_weather = tools.Timer(900) #update each 15 min
+        #self.timer_one_sec = tools.Timer(1)
         #-----------------------------------------------
         
         self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp)
         self.myapp.setTempTarget(self.temp_target)
-        self.myapp.setBarTimerMaximum(self.cycle_caldera)
-        self.myapp.setBarTimerValue(self.cycle_caldera)
+        self.myapp.setBarTimerMaximum(self.max_time_caldera)
+        self.myapp.setBarTimerValue(0)
         self.myapp.show_heater(False)
         
         #Init RADIO Com
         self.pi = pigpio.pi()
-        self.radio_tx = piVirtualWire.tx(self.pi, self.pin_tx, 2000) 
+        self.radio_tx = piVirtualWire.tx(self.pi, const.PIN_TX, 2000) 
 
         
     def __del__(self):
@@ -244,8 +242,8 @@ class main_thread(QThread):
             self.wait()
     
     def _get_temp(self):
-        #humidity, temperature = Adafruit_DHT.read_retry(11, self.pin_sensor_temp)
-        humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, self.pin_sensor_temp)
+        #humidity, temperature = Adafruit_DHT.read_retry(11, const.PIN_SENSOR_TEMP)
+        humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, const.PIN_SENSOR_TEMP)
         self.num_read+=1
         if humidity is not None and temperature is not None and humidity <= 100.0 and humidity >= 0.0:
             #redondear
@@ -302,14 +300,15 @@ class main_thread(QThread):
         
         #protection
         if self.cond_protection == True:
-            if self.temp_external < 0:
+            if self.temp_external < 0 and self.temp_target > 18:
                 self.temp_target = 18
-            elif self.temp_external < 5:
+            elif self.temp_external < 5 and self.temp_target > 19:
                 self.temp_target = 19
-            elif self.temp_external < 10:
+            elif self.temp_external < 10 and self.temp_target > 20:
                 self.temp_target = 20
             else:
                 pass
+        # --------------------------------------------------------
         
         #
         if self.temp_target != temp_target:
@@ -319,23 +318,24 @@ class main_thread(QThread):
           
         #Cycle protection of heater -----------------------
         caldera_enable = True
-        time_heater_on = time.time()-self.start_heater_on
-        timer_protection = time.time()-self.start_cycle_caldera
+        time_heater_on = self.timer_heater_on.elapsed()
+        time_protection = self.timer_cycle_caldera.elapsed()
         if self.caldera == True:
             if time_heater_on > self.max_time_caldera: 
                 caldera_enable = False  # the heater was along time on
-                self.myapp.ui.label_arm.setText("Desarmada!. Espera: "+ tools.segToMin(int(self.cycle_caldera-timer_protection)))
+                self.myapp.ui.label_arm.setText("Desarmada!. Espera: "+ tools.segToMin(int(self.cycle_caldera-time_protection)))
             else:
                 caldera_enable = True   # heater keep enabled
                 self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
-                #self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(time_heater_on))
+                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(time_heater_on))
         else:
-            if timer_protection > self.cycle_caldera:
+            if time_protection > self.cycle_caldera:
                 caldera_enable = True   # heater is enabled to be activated
-                self.myapp.ui.label_arm.setText("Armada")
+                self.myapp.ui.label_arm.setText("Lista")
+                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(0))
             else:
-                caldera_enable = False   # heater have to wait to activa again
-                self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.cycle_caldera-timer_protection)))
+                caldera_enable = False   # heater have to wait to be activated again
+                self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.cycle_caldera-time_protection)))
                 #self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(timer_protection)+1)
          
           
@@ -354,8 +354,8 @@ class main_thread(QThread):
         if self.real_temp < self.temp_target and self.caldera == False and caldera_enable == True:
             #active caldera
             self.caldera = True
-            self.start_heater_on = time.time()
-            self.start_cycle_caldera = time.time()
+            self.timer_heater_on.restart()
+            self.timer_cycle_caldera.restart()
             logging.info('Heater ON')
         if (self.real_temp >= self.temp_target or caldera_enable == False) and self.caldera == True:
             #disable caldera
@@ -405,7 +405,7 @@ class main_thread(QThread):
         # Implements the movement detection function 
         old_presence = self.presence
         old_pir_state = self.pir_state
-        new_pir_state = GPIO.input(self.pin_pir)
+        new_pir_state = GPIO.input(const.PIN_PIR)
         #print(old_pir_state, new_pir_state)
         if (old_pir_state == False) and (new_pir_state == 1):
             #print ("restart up")
@@ -437,9 +437,9 @@ class main_thread(QThread):
         ''' Read the LDR sensor '''
         if (time.time() - self.start_ldr_time) > self.period_ldr:
             #charge
-            GPIO.setup(self.pin_ldr_discharge,GPIO.IN)
-            GPIO.setup(self.pin_ldr_charge,GPIO.OUT)
-            GPIO.output(self.pin_ldr_charge, True)
+            GPIO.setup(const.PIN_LDR_DISCHARGE, GPIO.IN)
+            GPIO.setup(const.PIN_LDR_CHARGE,GPIO.OUT)
+            GPIO.output(const.PIN_LDR_CHARGE, True)
             t1=time.time()
             while not GPIO.input(self.pin_ldr_discharge):
                 pass
@@ -451,12 +451,12 @@ class main_thread(QThread):
             self.start_ldr_time = time.time()
             
             #discharge
-            GPIO.setup(self.pin_ldr_charge,GPIO.IN)
-            GPIO.setup(self.pin_ldr_discharge,GPIO.OUT)
-            GPIO.output(self.pin_ldr_discharge, False)
+            GPIO.setup(const.PIN_LDR_CHARGE,GPIO.IN)
+            GPIO.setup(const.PIN_LDR_DISCHARGE, GPIO.OUT)
+            GPIO.output(const.PIN_LDR_DISCHARGE, False)
             
     def _weather_process(self):
-        'Show the external weather information' 
+        '''Show the external weather information''' 
         if (self.timer_weather.expired() == True):
             weather = Weather(unit=Unit.CELSIUS)
             location = weather.lookup_by_location(self.location)
@@ -477,14 +477,14 @@ class main_thread(QThread):
         
     def _setLed(self, state):
         if state == "RED":
-            GPIO.output(self.pin_led_a,True)
-            GPIO.output(self.pin_led_b,False)
+            GPIO.output(const.PIN_LED_A,True)
+            GPIO.output(const.PIN_LED_B,False)
         elif state == "GREEN":
-            GPIO.output(self.pin_led_a,False)
-            GPIO.output(self.pin_led_b,True)
+            GPIO.output(const.PIN_LED_A,False)
+            GPIO.output(const.PIN_LED_B,True)
         else:
-            GPIO.output(self.pin_led_a,False)
-            GPIO.output(self.pin_led_b,False)
+            GPIO.output(const.PIN_LED_A,False)
+            GPIO.output(const.PIN_LED_B,False)
             
     #   
     def _alarm_control(self):

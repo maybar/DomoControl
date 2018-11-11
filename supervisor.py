@@ -42,8 +42,15 @@ while(1):
             state = "STOPPED"
         
     elif state == "STOPPED":
+        try:
+            p.terminate()
+            time.sleep(3)
+            p.kill()
+        except:
+            print ("except terminating process")
+            
         #try to start again
-        process_new = psutil.Popen("/home/pi/Documents/PhytonFiles/DomoControl/domo_control.sh")
+        process_new = psutil.Popen("/home/pi/Documents/PhytonFiles/DomoControl/main.sh")
         if process_new is not None:
             print("domo_control.sh restarted ! pid={}".format(process_new.pid))
             time.sleep(5)

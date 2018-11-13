@@ -109,8 +109,8 @@ def getRichTextWeather(location, condition, forecasts):
     +s1+location.wind.speed + " "+location.units.speed+ "</span></p>" \
     +s1+location.atmosphere.humidity + " %</span></p>" \
     +s1+"Sol: "+location.astronomy.sunrise + " - "+location.astronomy.sunset + "</span></p>"\
-    +s2 \
-    +s3+"Pronóstico para mañana:"+ "</span></p>" \
+    +s3+"Pronósticos:"+ "</span></p>" \
+    +s1+forecasts[0].day +" "+forecasts[0].text + " Max:"+forecasts[0].high + " Min:"+forecasts[0].low + "</span></p>" \
     +s1+forecasts[1].day +" "+forecasts[1].text + " Max:"+forecasts[1].high + " Min:"+forecasts[1].low + "</span></p>" 
     return s
 
@@ -155,30 +155,38 @@ class DataLog:
 
 class Timer:
     def __init__(self): 
-        self.period = 0
+        self.cycle = 0
+        self.periodic = True
         
-    def __init__(self, period):  # timeout in seconds
-        self.period = period
+    def __init__(self, cycle, periodic = True):  # timeout in seconds
+        self.cycle = cycle
+        self.periodic = periodic
         self.expired_now()
 
     def expired(self):
-        if (time.time()-self.start_time) > self.period:
-            self.start_time = time.time()
-            return True
-        return False
+        result = False
+        if (time.time()-self.start_time) > self.cycle:
+            if self.periodic == True:
+                self.start_time = time.time()
+            result = True
+        return result
     
     def expired_now(self):
-        self.start_time = time.time()-self.period
+        self.start_time = time.time()-self.cycle
         
     def restart(self):
         self.start_time = time.time()
     
-    def start(self, period):
-        self.period = period
+    def start(self, cycle):
+        self.cycle = cycle
         self.start_time = time.time()
+    
         
     def elapsed(self):
         return time.time()-self.start_time
+    
+    def remainder(self):
+        return self.start_time + self.cycle - time.time()
     
 class Email:
     def __init__(self, gmail_user, gmail_pass, smtp_server, smtp_port):

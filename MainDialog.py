@@ -193,7 +193,7 @@ class Ui_MainDialog(object):
         self.label_arm.setObjectName(_fromUtf8("label_arm"))
         self.text_weather = QtGui.QTextEdit(MainDialog)
         self.text_weather.setEnabled(True)
-        self.text_weather.setGeometry(QtCore.QRect(530, 50, 271, 251))
+        self.text_weather.setGeometry(QtCore.QRect(530, 50, 271, 271))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(242, 241, 241))
         brush.setStyle(QtCore.Qt.SolidPattern)
@@ -283,8 +283,8 @@ class Ui_MainDialog(object):
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\';\">Vel. viento: </span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\';\">Humedad:</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\';\">Sol: </span></p>\n"
-"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\'; font-weight:600;\">Pronósticos mañana:</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\'; font-weight:600;\">Pronósticos:</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Courier New,courier\';\">Fri Partly Cloudy    62 49</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Courier New,courier\';\">Fri Partly Cloudy    62 49</span></p></body></html>", None))
         self.btn_test.setText(_translate("MainDialog", "Test", None))
 

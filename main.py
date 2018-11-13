@@ -96,13 +96,14 @@ class DomoControlFrame(QtGui.QDialog):
     def setBarTimerValue(self,value):
         if self.old_bar_timer_value != value:
             self.ui.barHeaterTimer.setValue(value)
-            '''p = self.ui.barHeaterTimer.palette()
-            p.setColor(QPalette.Highlight, QColor(Qt.red))
-            self.ui.barHeaterTimer.setPalette(p)
-            self.ui.barHeaterTimer.show()'''
+##            p = self.ui.barHeaterTimer.palette()
+##            p.setColor(QPalette.Highlight, QColor(Qt.red))
+##            self.ui.barHeaterTimer.setPalette(p)
+            self.ui.barHeaterTimer.show()
             #self.ui.barHeaterTimer.setStyleSheet("background:'red';")
             self.ui.barHeaterTimer.update()
             self.old_bar_timer_value = value
+            
             
     def modeAlta(self):
         self.mode = "T.ALTA"
@@ -164,7 +165,7 @@ class main_thread(QThread):
         
         
         #CONFIG
-        self.HIGH_TEMP = 21
+        self.HIGH_TEMP = 22
         self.LOW_TEMP = 18
         self.OFF_TEMP = 10
         self.temp_target = self.OFF_TEMP
@@ -175,7 +176,7 @@ class main_thread(QThread):
         self.cycle_caldera = 15*60     #15 o 20 minutos
         self.max_time_caldera = 10*60     #10 min max time the caldera can be active
         self.location = "Usurbil"
-        self.cond_protection = True
+        self.cond_protection = False
         #-------------------------------------------
         try:
             f = open ('config.pickle','rb')
@@ -215,8 +216,8 @@ class main_thread(QThread):
         
         #Timers
         self.timer_sensor = tools.Timer(self.period_sensor)
-        self.timer_cycle_caldera = tools.Timer(self.cycle_caldera)
-        self.timer_heater_on = tools.Timer(self.max_time_caldera)
+        self.timer_cycle_caldera = tools.Timer(self.cycle_caldera, False)
+        self.timer_heater_on = tools.Timer(self.max_time_caldera, False)
         self.start_ldr_time = time.time()-self.period_ldr
         self.timer_tx = tools.Timer(const.TX_RESEND)
         self.timer_config = tools.Timer(5)     #timer to write de config data
@@ -319,23 +320,22 @@ class main_thread(QThread):
         #Cycle protection of heater -----------------------
         caldera_enable = True
         time_heater_on = self.timer_heater_on.elapsed()
-        time_protection = self.timer_cycle_caldera.elapsed()
         if self.caldera == True:
-            if time_heater_on > self.max_time_caldera: 
+            if self.timer_heater_on.expired() == True: 
                 caldera_enable = False  # the heater was along time on
-                self.myapp.ui.label_arm.setText("Desarmada!. Espera: "+ tools.segToMin(int(self.cycle_caldera-time_protection)))
+                self.myapp.ui.label_arm.setText("Desarmada!. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder())))
             else:
                 caldera_enable = True   # heater keep enabled
                 self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
                 self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(time_heater_on))
         else:
-            if time_protection > self.cycle_caldera:
+            if self.timer_cycle_caldera.expired() == True:
                 caldera_enable = True   # heater is enabled to be activated
-                self.myapp.ui.label_arm.setText("Lista")
+                self.myapp.ui.label_arm.setText("Sistema preparado")
                 self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(0))
             else:
                 caldera_enable = False   # heater have to wait to be activated again
-                self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.cycle_caldera-time_protection)))
+                self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder())))
                 #self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(timer_protection)+1)
          
           
@@ -526,7 +526,7 @@ class main_thread(QThread):
         time.sleep(2)
         self._get_temp()
         time.sleep(2)
-        #self.connect(self, QtCore.SIGNAL("_updateBarTimer(int)"),self._updateBarTimer)
+        self.connect(self, QtCore.SIGNAL("_updateBarTimer(int)"),self._updateBarTimer)
         self.connect(self, QtCore.SIGNAL("_updateHeatterWidget(int)"),self._updateHeatterWidget)
         self.connect(self, QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),self._updateWeatherText)
         while not self.stopped:

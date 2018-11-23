@@ -1,7 +1,7 @@
 
 function lee_json() {
     //var output1 = document.getElementById('output1');
-    //output1.innerHTML = "leyendo....";
+    
     var xmlhttp = new XMLHttpRequest();
     var url = "http://192.168.1.109:8000/config.json";
 
@@ -17,6 +17,9 @@ function lee_json() {
 }
 
 function write_form(datos_json){
+    output1.innerHTML = "escribiendo....";
+    T1.innerHTML = datos_json.temp_1;
+    
     document.getElementById("T1").value = datos_json.temp_1;
     document.getElementById("T2").value = datos_json.temp_2;
     document.getElementById("T3").value = datos_json.temp_3;

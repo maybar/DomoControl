@@ -85,6 +85,8 @@ class DomoControlFrame(QtGui.QDialog):
         self.ui.text_weather.update()
         self.ui.icon_condition.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/icon_weather.gif"))
         self.ui.icon_condition.update()
+        self.ui.icon_condition_2.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/icon_weather2.gif"))
+        self.ui.icon_condition_2.update()
     
     def setTime(self,ahora):
         ''' Show the hour '''
@@ -161,11 +163,12 @@ class main_thread(QThread):
         self.presence = False
         self.watchdog_counter = 0
         self.temp_external = 22
+        self.sm_caldera = "IDLE"  #state machine for heater protection
         #------------------------------------------
         
         
         #CONFIG
-        self.HIGH_TEMP = 22
+        self.HIGH_TEMP = 21
         self.LOW_TEMP = 18
         self.OFF_TEMP = 10
         self.temp_target = self.OFF_TEMP
@@ -176,7 +179,7 @@ class main_thread(QThread):
         self.cycle_caldera = 15*60     #15 o 20 minutos
         self.max_time_caldera = 10*60     #10 min max time the caldera can be active
         self.location = "Usurbil"
-        self.cond_protection = False
+        self.cond_protection = True
         #-------------------------------------------
         try:
             f = open ('config.pickle','rb')
@@ -216,10 +219,10 @@ class main_thread(QThread):
         
         #Timers
         self.timer_sensor = tools.Timer(self.period_sensor)
-        self.timer_cycle_caldera = tools.Timer(self.cycle_caldera, False)
-        self.timer_heater_on = tools.Timer(self.max_time_caldera, False)
+        self.timer_cycle_caldera = tools.Timer(self.cycle_caldera, tools.Timer.ONE_SHOT)
+        self.timer_heater_on = tools.Timer(self.max_time_caldera, tools.Timer.ONE_SHOT)
         self.start_ldr_time = time.time()-self.period_ldr
-        self.timer_tx = tools.Timer(const.TX_RESEND)
+        self.timer_tx = tools.Timer(const.TX_RESEND, 3) #3 times
         self.timer_config = tools.Timer(5)     #timer to write de config data
         self.timer_pir = tools.Timer(50)
         self.timer_weather = tools.Timer(900) #update each 15 min
@@ -231,6 +234,7 @@ class main_thread(QThread):
         self.myapp.setBarTimerMaximum(self.max_time_caldera)
         self.myapp.setBarTimerValue(0)
         self.myapp.show_heater(False)
+        self.myapp.ui.label_arm.setText("Sistema preparado")
         
         #Init RADIO Com
         self.pi = pigpio.pi()
@@ -317,27 +321,38 @@ class main_thread(QThread):
         # ------------------------------------------------
         
           
-        #Cycle protection of heater -----------------------
+        # State machine protection of heater -----------------------
         caldera_enable = True
-        time_heater_on = self.timer_heater_on.elapsed()
-        if self.caldera == True:
+        if self.sm_caldera == "IDLE":
+            if self.caldera == True:
+                self.timer_heater_on.restart()
+                self.timer_cycle_caldera.restart()
+                self.sm_caldera = "WORKING"
+                #print ("Caldera se activó -> WORKING")
+        elif self.sm_caldera == "WORKING":
+            time_heater_on = self.timer_heater_on.elapsed()
+            self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
+            self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(time_heater_on))
             if self.timer_heater_on.expired() == True: 
-                caldera_enable = False  # the heater was along time on
-                self.myapp.ui.label_arm.setText("Desarmada!. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder())))
-            else:
-                caldera_enable = True   # heater keep enabled
-                self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
-                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(time_heater_on))
-        else:
+                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(self.max_time_caldera))
+                self.sm_caldera = "WAITING"
+                #print ("Temporizador1 expiró. Espera")
+            if self.caldera == False:
+                self.sm_caldera = "WAITING"
+                #print ("Caldera se apagó. Espera")
+        elif self.sm_caldera == "WAITING": 
+            caldera_enable = False
+            self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder()))) 
             if self.timer_cycle_caldera.expired() == True:
-                caldera_enable = True   # heater is enabled to be activated
                 self.myapp.ui.label_arm.setText("Sistema preparado")
-                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(0))
-            else:
-                caldera_enable = False   # heater have to wait to be activated again
-                self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder())))
-                #self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(timer_protection)+1)
-         
+                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(0)) 
+                self.sm_caldera = "IDLE"
+                #print ("Temporizador2 expiró. pasa a Idle")
+        else:
+            pass
+        
+        #print (self.sm_caldera)
+                 
           
         # -----------------------------------------------------
         
@@ -354,8 +369,6 @@ class main_thread(QThread):
         if self.real_temp < self.temp_target and self.caldera == False and caldera_enable == True:
             #active caldera
             self.caldera = True
-            self.timer_heater_on.restart()
-            self.timer_cycle_caldera.restart()
             logging.info('Heater ON')
         if (self.real_temp >= self.temp_target or caldera_enable == False) and self.caldera == True:
             #disable caldera
@@ -364,7 +377,7 @@ class main_thread(QThread):
             
         # Command the heatter
         if old_caldera != self.caldera:
-            self.timer_tx.expired_now()
+            self.timer_tx.restart()
             self.emit(QtCore.SIGNAL("_updateHeatterWidget(int)"),self.caldera)
             send_emomcms_data = True
         #-----------------------------------------------------
@@ -466,13 +479,21 @@ class main_thread(QThread):
             self.temp_external = int(condition.temp)
             #Descargar imagen
             url_imagen = "http://l.yimg.com/a/i/us/we/52/"+condition.code+".gif" # El link de la imagen
-            print(url_imagen)
             nombre_local_imagen = os.getcwd() + "/res/icon_weather.gif" # El nombre con el que queremos guardarla
             try:
                 urlretrieve(url_imagen, nombre_local_imagen)
             except:
                 logging.error ("Error trying to retrieve the icon weather")
             self.emit(QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),s)
+            
+            #Descargar imagen pronostico para mañana
+            url_imagen2 = "http://l.yimg.com/a/i/us/we/52/"+forecasts[1].code+".gif" # El link de la imagen
+            #print(url_imagen2)
+            nombre_local_imagen = os.getcwd() + "/res/icon_weather2.gif" # El nombre con el que queremos guardarla
+            try:
+                urlretrieve(url_imagen2, nombre_local_imagen)
+            except:
+                logging.error ("Error trying to retrieve the icon weather2")
 
         
     def _setLed(self, state):
@@ -541,14 +562,13 @@ class main_thread(QThread):
             self._writeData()
             self._writeConfig()
             time.sleep(0.5)
-            QApplication.processEvents()    #to avoid freze the screen
+            QApplication.sendPostedEvents()    #to avoid freze the screen
             '''except:
                 logging.critical('Error loop run')'''
             
             
         # ... Clean shutdown code here ...
         logging.info('Thread is stopped' )
-        GPIO.output(self.pin_caldera,False)
         self.data.close()
         GPIO.cleanup() # this ensures a clean exit 
         self.radio_tx.cancel()

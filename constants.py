@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # Constants definition
-TX_RESEND = 60 #Time in seconds to resend the radio command to 'Caldera'
+TX_RESEND = 1 #Time in seconds to resend the radio command to 'Caldera'
 
 PIN_SENSOR_TEMP = 12    # INPUT Pin to read the temperature
 PIN_PIR = 20            # INPUT Pin for movement detection (PIR)

@@ -106,12 +106,15 @@ def getRichTextWeather(location, condition, forecasts):
     +s3+"Condiciones actuales:"+ "</span></p>" \
     +s1+condition.text + "</span></p>" \
     +s1+condition.temp + " º"+location.units.temperature + "</span></p>" \
+    +s1+forecasts[0].high + "º / "+forecasts[0].low + "º"+"</span></p>" \
     +s1+location.wind.speed + " "+location.units.speed+ "</span></p>" \
     +s1+location.atmosphere.humidity + " %</span></p>" \
     +s1+"Sol: "+location.astronomy.sunrise + " - "+location.astronomy.sunset + "</span></p>"\
-    +s3+"Pronósticos:"+ "</span></p>" \
-    +s1+forecasts[0].day +" "+forecasts[0].text + " Max:"+forecasts[0].high + " Min:"+forecasts[0].low + "</span></p>" \
-    +s1+forecasts[1].day +" "+forecasts[1].text + " Max:"+forecasts[1].high + " Min:"+forecasts[1].low + "</span></p>" 
+    +s1+"------------------------------------"+ "</span></p>" \
+    +s3+"Mañana:"+ "</span></p>" \
+    +s1+forecasts[1].day + "\t"+forecasts[1].high + "ºC / "+forecasts[1].low + "ºC"+"</span></p>"  \
+    +s2 \
+    +s1+"------------------------------------"+ "</span></p>" 
     return s
 
 from threading import Timer
@@ -154,21 +157,37 @@ class DataLog:
         
 
 class Timer:
+    PERIODIC = 0
+    ONE_SHOT = 1
+    
     def __init__(self): 
         self.cycle = 0
-        self.periodic = True
+        self.num_cycles = 0
+        self.counter = long(0)
         
-    def __init__(self, cycle, periodic = True):  # timeout in seconds
+    def __init__(self, cycle, num_cycles = 0):  
+        """ Constructor of the Timer class
+        
+        Keyword arguments:
+        cycle -- the period in seconds of the timer cycle
+        num_cycles -- the number of cycles on the timer (default 0)
+        0: means run eternally
+        
+        """
         self.cycle = cycle
-        self.periodic = periodic
+        self.num_cycles = num_cycles
+        self.counter = 0
         self.expired_now()
 
     def expired(self):
         result = False
         if (time.time()-self.start_time) > self.cycle:
-            if self.periodic == True:
+            if (self.num_cycles == 0) or (self.counter <= self.num_cycles):
                 self.start_time = time.time()
+                self.counter = self.counter +1
             result = True
+        if (self.num_cycles > 0) and (self.counter > self.num_cycles):
+            result = False
         return result
     
     def expired_now(self):
@@ -176,9 +195,12 @@ class Timer:
         
     def restart(self):
         self.start_time = time.time()
+        self.counter = 0
     
-    def start(self, cycle):
+    def start(self, cycle, num_cycles = 0):
         self.cycle = cycle
+        self.num_cycles = num_cycles
+        self.counter = 0
         self.start_time = time.time()
     
         
@@ -188,24 +210,6 @@ class Timer:
     def remainder(self):
         return self.start_time + self.cycle - time.time()
     
-class Email:
-    def __init__(self, gmail_user, gmail_pass, smtp_server, smtp_port):
-        self.gmail_user = gmail_user
-        self.gmail_pass = gmail_pass
-        self.smtp_server = smtp_server
-        self.smtp_port = smtp_port
-            
-    def send_email(self, recipient, subject, text):
-        smtpserver = smtplib.SMTP(self.smtp_server, self.smtp_port)
-        smtpserver.ehlo()
-        smtpserver.starttls()
-        smtpserver.ehlo
-        smtpserver.login(self.gmail_user, self.gmail_pass) 
-        header = 'To: ' + recipient + '\n' + 'From: ' + self.gmail_user
-        header = header + '\n' + 'Subject:' + subject + '\n'
-        msg = header + '\n' + text+ ' \n\n'
-        smtpserver.sendmail(self.gmail_user, recipient, msg) 
-        smtpserver.close() 
              
     
     

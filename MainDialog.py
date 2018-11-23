@@ -193,7 +193,7 @@ class Ui_MainDialog(object):
         self.label_arm.setObjectName(_fromUtf8("label_arm"))
         self.text_weather = QtGui.QTextEdit(MainDialog)
         self.text_weather.setEnabled(True)
-        self.text_weather.setGeometry(QtCore.QRect(530, 50, 271, 271))
+        self.text_weather.setGeometry(QtCore.QRect(530, 50, 271, 311))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(242, 241, 241))
         brush.setStyle(QtCore.Qt.SolidPattern)
@@ -220,7 +220,7 @@ class Ui_MainDialog(object):
         self.text_weather.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
         self.text_weather.setObjectName(_fromUtf8("text_weather"))
         self.icon_condition = QtGui.QLabel(MainDialog)
-        self.icon_condition.setGeometry(QtCore.QRect(730, 130, 52, 52))
+        self.icon_condition.setGeometry(QtCore.QRect(720, 150, 52, 52))
         self.icon_condition.setText(_fromUtf8(""))
         self.icon_condition.setPixmap(QtGui.QPixmap(_fromUtf8("res/icon_weather.gif")))
         self.icon_condition.setObjectName(_fromUtf8("icon_condition"))
@@ -233,6 +233,11 @@ class Ui_MainDialog(object):
         self.btn_test = QtGui.QPushButton(MainDialog)
         self.btn_test.setGeometry(QtCore.QRect(670, 380, 97, 81))
         self.btn_test.setObjectName(_fromUtf8("btn_test"))
+        self.icon_condition_2 = QtGui.QLabel(MainDialog)
+        self.icon_condition_2.setGeometry(QtCore.QRect(720, 250, 52, 52))
+        self.icon_condition_2.setText(_fromUtf8(""))
+        self.icon_condition_2.setPixmap(QtGui.QPixmap(_fromUtf8("res/icon_weather2.gif")))
+        self.icon_condition_2.setObjectName(_fromUtf8("icon_condition_2"))
         self.frame_2.raise_()
         self.lcdTemp.raise_()
         self.label_temp.raise_()
@@ -252,6 +257,7 @@ class Ui_MainDialog(object):
         self.icon_condition.raise_()
         self.label_alarm_2.raise_()
         self.btn_test.raise_()
+        self.icon_condition_2.raise_()
 
         self.retranslateUi(MainDialog)
         QtCore.QMetaObject.connectSlotsByName(MainDialog)
@@ -280,11 +286,14 @@ class Ui_MainDialog(object):
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\'; font-weight:600;\">Condición actual:</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\';\">Nublado</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\';\">Temperatura: 25ºC</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\';\">10º / 20º</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\';\">Vel. viento: </span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\';\">Humedad:</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\';\">Sol: </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\'; font-weight:600;\">Pronósticos:</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Courier New,courier\';\">Fri Partly Cloudy    62 49</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Courier New,courier\';\">Fri Partly Cloudy    62 49</span></p></body></html>", None))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">--------------------------------------------------------</p>\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Courier New,courier\';\">Fri 62º / 49º</span></p>\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:\'Courier New,courier\';\"><br /></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">--------------------------------------------------------</p></body></html>", None))
         self.btn_test.setText(_translate("MainDialog", "Test", None))
 

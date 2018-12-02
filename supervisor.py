@@ -1,9 +1,11 @@
 import psutil
 import time
 
+print("******** SUPERVISOR.PY ************")
 state = "IDLE"
 print ("Supervisor>> IDLE")
 pid = 0
+process = psutil.Process()
 while(1):
     if state == "IDLE":
         #check if the app is running the first time
@@ -11,10 +13,10 @@ while(1):
         found = False
         for pid in list_pid:
             try:
-                p = psutil.Process(pid)
+                process = psutil.Process(pid)
                 #print ("Nombre:",p.name(),"EXE:",p.exe(),"CWD:",p.cwd(),"CL:",p.cmdline(   ),"ST:",p.status())
-                CL = p.cmdline()
-                ST = p.status()
+                CL = process.cmdline()
+                ST = process.status()
                 for word in CL:
                     if '/DomoControl/main.py' in word:
                         if 'sleeping' in ST:
@@ -31,7 +33,7 @@ while(1):
     elif state == "RUNNING":
         #check if the application is running
         try:
-            ST = p.status()
+            ST = process.status()
             if (not psutil.pid_exists(pid)) or (ST == psutil.STATUS_STOPPED) or (ST == psutil.STATUS_ZOMBIE):
                 print (ST)
                 print ("pid does not exist")
@@ -43,18 +45,18 @@ while(1):
         
     elif state == "STOPPED":
         try:
-            p.terminate()
+            process.terminate()
             time.sleep(3)
-            p.kill()
+            process.kill()
         except:
             print ("except terminating process")
             
         #try to start again
-        process_new = psutil.Popen("/home/pi/Documents/PhytonFiles/DomoControl/main.sh")
-        if process_new is not None:
-            print("domo_control.sh restarted ! pid={}".format(process_new.pid))
+        process = psutil.Popen("/home/pi/Documents/PhytonFiles/DomoControl/main.sh")
+        if process is not None:
+            print("domo_control.sh restarted ! pid={}".format(process.pid))
             time.sleep(5)
-            pid = process_new.pid
+            pid = process.pid
             state = "IDLE"
             print ("Supervisor>>RUNNING")
         else:

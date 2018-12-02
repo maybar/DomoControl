@@ -1,6 +1,8 @@
 #!/bin/sh
 
 sleep 1
+
+echo " ***** DOMO_CONTROL:SH ******"
 cd /home/pi/Documents/PhytonFiles/DomoControl/domocontrol_web
 python3 -m http.server --cgi &
 

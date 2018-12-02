@@ -90,7 +90,9 @@ class DomoControlFrame(QtGui.QDialog):
     
     def setTime(self,ahora):
         ''' Show the hour '''
-        self.ui.label_hora.setText(ahora)
+        old_text=self.ui.label_hora.text()
+        if old_text != ahora:
+            self.ui.label_hora.setText(ahora)
     
     def setBarTimerMaximum(self,max):
         self.ui.barHeaterTimer.setMaximum(max)
@@ -164,6 +166,7 @@ class main_thread(QThread):
         self.watchdog_counter = 0
         self.temp_external = 22
         self.sm_caldera = "IDLE"  #state machine for heater protection
+        self.toggle = False
         #------------------------------------------
         
         
@@ -180,6 +183,7 @@ class main_thread(QThread):
         self.max_time_caldera = 10*60     #10 min max time the caldera can be active
         self.location = "Usurbil"
         self.cond_protection = True
+        self.save_history = False
         #-------------------------------------------
         try:
             f = open ('config.pickle','rb')
@@ -214,6 +218,17 @@ class main_thread(QThread):
         #-------------------------------------------
         
         self.data = tools.DataLog("Tiempo,T.Real,T.Sensor,T.Humedad,Caldera, Presence")
+        self.status_datos = {
+            'temp1' : 25.0,
+            'hum'   : 50.0,
+            'mode'   : 'dia',
+            'temp2'   : 21.0,
+            'state'   : False,
+            'time'  :   "00:00",
+            'pir'   : False,
+            'alarma'   : 1
+        }
+        self.status_log = tools.StatusLog(**self.status_datos)
         self.temp_list = np.array([22.0,22.0,22.0])
         self.humi_list = np.array([50.0,50.0,50.0])
         
@@ -402,8 +417,15 @@ class main_thread(QThread):
         ''' control the led '''
         if self.caldera == True:
             self._setLed('RED')
+            self.toggle = False
         else:
-            self._setLed('GREEN')
+            if self.toggle == True:
+                self._setLed('GREEN')
+                self.toggle = False
+            else:
+                self._setLed('OFF')
+                self.toggle = True
+                
         #---------------------------------------------------
         if send_emomcms_data == True:
             var_data = '"temp":'+str(self.sensor_temp) + "," + '"hum":'+str(self.sensor_humidity) + ","
@@ -514,13 +536,33 @@ class main_thread(QThread):
     
     def _watchdogHandler(self):
         logging.critical ("Whoa! Watchdog expired. Holy heavens!")
-        GPIO.output(self.pin_caldera,False) #stop caldera
         sys.exit()
         
     def _writeData(self):
+        if self.save_history == False:
+            return
         ''' Write data '''
         dataList = np.array([self.real_temp, self.sensor_temp,self.sensor_humidity, self.caldera, self.presence])
         self.data.write(dataList)
+    
+    def _writeStatusData(self):
+        ''' Write status data '''
+        if self.sm_caldera != "IDLE":
+            self.status_datos['time']  = tools.segToMin(self.timer_heater_on.elapsed()) + " [m:s] ("+self.sm_caldera+")"
+        else:
+            self.status_datos['time']  = "00:00 [m:s] (IDLE)"
+
+        self.status_datos['temp1'] = self.sensor_temp
+        self.status_datos['hum']   = self.sensor_humidity
+        self.status_datos['mode']   = self.mode
+        self.status_datos['temp2']   = self.temp_target
+        self.status_datos['state']   = self.caldera
+        self.status_datos['pir']   = self.presence
+        self.status_datos['alarma']   = 1
+        
+        ret = self.status_log.write(**self.status_datos)
+        if ret == True:
+            logging.info("Status data written in json file")
         
     def _writeConfig(self):
         if (self.timer_config.expired() == True):
@@ -560,6 +602,7 @@ class main_thread(QThread):
             #self._alarm_control()
 ##              watchdog.reset()
             self._writeData()
+            self._writeStatusData()
             self._writeConfig()
             time.sleep(0.5)
             QApplication.sendPostedEvents()    #to avoid freze the screen

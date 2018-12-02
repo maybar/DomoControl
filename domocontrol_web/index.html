@@ -3,14 +3,15 @@
     
     <head>
         <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1"> 
         <title>Domo Control</title>
         <meta name="description" content="Pagina principal de la centralita domótica Home Control">
+        <meta HTTP-EQUIV="REFRESH" CONTENT="15;URL=index.html">
         <!-- Bootstrap CSS CDN -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
         <link rel="stylesheet" href="css/style.css">
     </head>
-    <body onload="lee_json();">
+    <body onload="lee_status_json();">
          <div class="wrapper">
             <!-- Sidebar Holder -->
             <nav id="sidebar">
@@ -38,18 +39,32 @@
                 <h2>Centralita domótica</h2>
                 <p>Bienvenidos a la página principal de la centralita domótica de tu casa.</p>
                 <p>Esta página permite ver acceder a la configuración de la centralita y al manual de usuario.</p>
-                <h2>Estado</h2>
+                <h3>Estado</h3>
                 <p>Los siguientes datos muestran el estado actual de la centralita.</p>
-                <div id="output1">....                  
-                    </div>
-                <h2>Sensor de Temperatura</h2>
-                <div id="T1">....                  
-                    </div>
-                    <div id="T2">nada aun                  
-                    </div>
-                    <div id="T3">nada aun                  
-                    </div>
-                </div>
+                
+                <h3>Control de Temperatura</h3>
+                    <h4>Datos del sensor</h4>
+                        <ol>
+                            <li id="temp1">Temperatura actual: </li>
+                            <li id="hum">Humedad actual: </li>
+                        </ol>
+                    <h4>Controlador</h4>
+                        <ol>
+                            <li id="mode">Modo de operación: </li>
+                            <li id="temp2">Temperatura deseda: </li>
+                        </ol>
+                     <h4>Caldera</h4>
+                        <ol>
+                            <li id="state">Estado: </li>
+                            <li id="time">Tiempo de activación: </li>
+                        </ol>
+                <h3>Control de seguridad</h3>
+                    <ol>
+                        <li id="pir">Detector presencia: </li>
+                        <li id="alarma">Alarma activada: </li>
+                    </ol>
+                
+                <div id="output1">....</div>
                 <script src="js/script.js"></script>
 
             </div>

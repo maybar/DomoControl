@@ -7,6 +7,7 @@ import numpy as np
 import datetime
 import time
 import smtplib
+import json
 
 
 #Tabla for Bochorno termico
@@ -153,6 +154,21 @@ class DataLog:
         
     def close(self):
         self.file.close()
+        
+class StatusLog:
+    
+    def __init__(self, **datos):  # name of the file
+        self.old_data = datos
+
+    def write(self, **data):
+        ret = False
+        if json.dumps(data) != json.dumps(self.old_data):
+            with open('log/status.json', 'w') as file:
+                json.dump(data, file)
+            
+            self.old_data = data
+            ret = True
+        return ret
         
         
 

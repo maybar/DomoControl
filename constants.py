@@ -10,3 +10,7 @@ PIN_LED_B = 5
 PIN_LDR_CHARGE = 19
 PIN_LDR_DISCHARGE = 13
 PIN_TX = 14             # OUTPUT Pin to radio communication
+
+TEMP_TARGET_0 = 19
+TEMP_TARGET_5 = 20
+TEMP_TARGET_10 = 21

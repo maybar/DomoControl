@@ -1,7 +1,5 @@
-'''
-Tools for Domotic
+"""This module contains several classes useful for domotic proyects."""
 
-'''
 import Grid
 import numpy as np
 import datetime
@@ -184,10 +182,9 @@ class Timer:
     def __init__(self, cycle, num_cycles = 0):  
         """ Constructor of the Timer class
         
-        Keyword arguments:
-        cycle -- the period in seconds of the timer cycle
-        num_cycles -- the number of cycles on the timer (default 0)
-        0: means run eternally
+        Arg:
+            cycle: the period in seconds of the timer cycle
+            num_cycles: the number of cycles on the timer (default 0: means run eternally)
         
         """
         self.cycle = cycle

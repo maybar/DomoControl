@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-# -*- coding: Windows-1252 -*-
+
+
+"""This module is the main module for Domo control project.
+It contains two classes: DomoControlFrame and main_thread"""
 
 import os,sys
 import numpy as np
@@ -24,7 +27,60 @@ import constants as const
 import psutil
 
 class DomoControlFrame(QtGui.QDialog):
-    ''' .... '''
+    """This class docstring shows how to use sphinx and rst syntax
+
+    The first line is brief explanation, which may be completed with 
+    a longer one. For instance to discuss about its methods. The only
+    method here is :func:`function1`'s. The main idea is to document
+    the class and methods's arguments with 
+
+    - **parameters**, **types**, **return** and **return types**::
+
+          :param arg1: description
+          :param arg2: description
+          :type arg1: type description
+          :type arg1: type description
+          :return: return description
+          :rtype: the return type description
+
+    - and to provide sections such as **Example** using the double commas syntax::
+
+          :Example:
+
+          followed by a blank line !
+
+      which appears as follow:
+
+      :Example:
+
+      followed by a blank line
+
+    - Finally special sections such as **See Also**, **Warnings**, **Notes**
+      use the sphinx syntax (*paragraph directives*)::
+
+          .. seealso:: blabla
+          .. warnings also:: blabla
+          .. note:: blabla
+          .. todo:: blabla
+
+    .. note::
+        There are many other Info fields but they may be redundant:
+            * param, parameter, arg, argument, key, keyword: Description of a
+              parameter.
+            * type: Type of a parameter.
+            * raises, raise, except, exception: That (and when) a specific
+              exception is raised.
+            * var, ivar, cvar: Description of a variable.
+            * returns, return: Description of the return value.
+            * rtype: Return type.
+
+    .. note::
+        There are many other directives such as versionadded, versionchanged,
+        rubric, centered, ... See the sphinx documentation for more details.
+
+    Here below is the results of the :func:`function1` docstring.
+
+    """
     def __init__(self,parent=None):
         ''' Constructor of DomoControlFrame '''
         QtGui.QWidget.__init__(self, parent)
@@ -56,7 +112,7 @@ class DomoControlFrame(QtGui.QDialog):
  
     def setTempTarget(self,temperature):
         ''' Show the temperature target '''
-        s = "T.Objetivo: "+str(temperature)+" ºC"
+        s = "T.Objetivo: "+str(temperature)+" ÂºC"
         #s = unicode(s, "utf-8")
         self.ui.label_temp_target.setText(s)
 
@@ -78,7 +134,7 @@ class DomoControlFrame(QtGui.QDialog):
             #print ("No Presencia")
 
     def showLightValue(self,value):
-        self.ui.label_light.setText("Iluminación: "+str(value)+"%")
+        self.ui.label_light.setText("IluminaciÃ³n: "+str(value)+"%")
         
     def showWeather(self, rich_text):
         self.ui.text_weather.setHtml(rich_text)
@@ -143,7 +199,13 @@ class DomoControlFrame(QtGui.QDialog):
 
 
 class main_thread(QThread):
-    ''' Thread implementing the main loop '''
+    """This class main_thread implements the main loop of the project
+
+    This class is executed from a Thread
+
+    :param QThread: Clase QThread
+
+    """
 
     def __init__(self,myapp):
         ''' Constructor '''
@@ -257,11 +319,16 @@ class main_thread(QThread):
 
         
     def __del__(self):
+        """ It stops the thread """
         self.stop()
         if not self.finished():
             self.wait()
     
     def _get_temp(self):
+        """ 
+        It reads the temperature 
+        
+        """
         #humidity, temperature = Adafruit_DHT.read_retry(11, const.PIN_SENSOR_TEMP)
         humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, const.PIN_SENSOR_TEMP)
         self.num_read+=1
@@ -286,19 +353,27 @@ class main_thread(QThread):
             self.num_failures+=1
             
     def _updateBarTimer(self,value):
+        """ Update the bar timer in the dialog GUI 
+        
+        Args:
+            value: Number between 0 and self.max_time_caldera
+        """
         self.myapp.setBarTimerValue(value)
     
     def _updateHeatterWidget(self,value):
+        """ Update the Dialog GUI heatter widget """
         self.myapp.show_heater(value)
         
     def _updateWeatherText(self,value):
+        """ Update the dialog GUI for the Weather panel"""
         self.myapp.showWeather(value)
         
     #   
     def _temperatureControl(self):
+        ''' Implements the control function of temperature '''
         send_emomcms_data = False
         
-        ''' Implements the control function of temperature '''
+        
         ahora_tmp = datetime.datetime.now()
         ahora = datetime.time(ahora_tmp.hour,ahora_tmp.minute,ahora_tmp.second)
         self.myapp.setTime(str(ahora))
@@ -318,14 +393,14 @@ class main_thread(QThread):
         else:
             self.temp_target = self.OFF_TEMP
         
-        #protection
+        #anti condensation protection
         if self.cond_protection == True:
-            if self.temp_external < 0 and self.temp_target > 18:
-                self.temp_target = 18
-            elif self.temp_external < 5 and self.temp_target > 19:
-                self.temp_target = 19
-            elif self.temp_external < 10 and self.temp_target > 20:
-                self.temp_target = 20
+            if self.temp_external < 0 and self.temp_target > const.TEMP_TARGET_0:
+                self.temp_target = const.TEMP_TARGET_0
+            elif self.temp_external < 5 and self.temp_target > const.TEMP_TARGET_5:
+                self.temp_target = const.TEMP_TARGET_5
+            elif self.temp_external < 10 and self.temp_target > const.TEMP_TARGET_10:
+                self.temp_target = const.TEMP_TARGET_10
             else:
                 pass
         # --------------------------------------------------------
@@ -343,7 +418,7 @@ class main_thread(QThread):
                 self.timer_heater_on.restart()
                 self.timer_cycle_caldera.restart()
                 self.sm_caldera = "WORKING"
-                #print ("Caldera se activó -> WORKING")
+                self._setLed('OFF')
         elif self.sm_caldera == "WORKING":
             time_heater_on = self.timer_heater_on.elapsed()
             self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
@@ -351,18 +426,24 @@ class main_thread(QThread):
             if self.timer_heater_on.expired() == True: 
                 self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(self.max_time_caldera))
                 self.sm_caldera = "WAITING"
-                #print ("Temporizador1 expiró. Espera")
+                #print ("Temporizador1 expirÃ³. Espera")
             if self.caldera == False:
                 self.sm_caldera = "WAITING"
-                #print ("Caldera se apagó. Espera")
+                #print ("Caldera se apagÃ³. Espera")
+            if self.toggle == True:
+                self._setLed('GREEN')
+                self.toggle = False
+            else:
+                self._setLed('OFF')
+                self.toggle = True
         elif self.sm_caldera == "WAITING": 
+            self._setLed('GREEN')
             caldera_enable = False
             self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder()))) 
             if self.timer_cycle_caldera.expired() == True:
                 self.myapp.ui.label_arm.setText("Sistema preparado")
                 self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(0)) 
                 self.sm_caldera = "IDLE"
-                #print ("Temporizador2 expiró. pasa a Idle")
         else:
             pass
         
@@ -373,11 +454,17 @@ class main_thread(QThread):
         
         # Cycle to read sensor --------------------------------------
         if self.timer_sensor.expired():
+            #current_led_state = self._getLed()
+            self._setLed('GREEN')
             old_temp=self.sensor_temp
             old_hum=self.sensor_humidity
             self._get_temp()
             # Write log on internet
             send_emomcms_data = True
+            self._setLed('OFF')
+                
+                
+            
          
         # Take decition to start the heater ------------------------------------------------------
         old_caldera = self.caldera
@@ -412,19 +499,6 @@ class main_thread(QThread):
                 logging.info(s)
             else: 
                 logging.error("Tx Error sending")
-        #-----------------------------------------------------
-        
-        ''' control the led '''
-        if self.caldera == True:
-            self._setLed('RED')
-            self.toggle = False
-        else:
-            if self.toggle == True:
-                self._setLed('GREEN')
-                self.toggle = False
-            else:
-                self._setLed('OFF')
-                self.toggle = True
                 
         #---------------------------------------------------
         if send_emomcms_data == True:
@@ -437,7 +511,7 @@ class main_thread(QThread):
             
     #   
     def _pirProcess(self):
-        # Implements the movement detection function 
+        """ Implements the movement detection function """
         old_presence = self.presence
         old_pir_state = self.pir_state
         new_pir_state = GPIO.input(const.PIN_PIR)
@@ -460,6 +534,7 @@ class main_thread(QThread):
         return
     
     def _putEmoncmsData(self, id, var_data):
+        ''' Send the data to Emoncms web server '''
         s = 'https://emoncms.org/input/post?node='+str(id)+'&fulljson={'+var_data+'}&apikey=9771b32a0de292aabb7f01cfdcad146b'
         #print("EmoncmsData: "+s)
         try:
@@ -469,7 +544,7 @@ class main_thread(QThread):
         #print("EmoncmsData "+contents)
 
     def _lightProcess(self):
-        ''' Read the LDR sensor '''
+        """ Read the LDR sensor """
         if (time.time() - self.start_ldr_time) > self.period_ldr:
             #charge
             GPIO.setup(const.PIN_LDR_DISCHARGE, GPIO.IN)
@@ -491,34 +566,52 @@ class main_thread(QThread):
             GPIO.output(const.PIN_LDR_DISCHARGE, False)
             
     def _weather_process(self):
-        '''Show the external weather information''' 
+        """ Show the external weather information """
         if (self.timer_weather.expired() == True):
             weather = Weather(unit=Unit.CELSIUS)
-            location = weather.lookup_by_location(self.location)
-            condition = location.condition
-            forecasts = location.forecast
-            s = tools.getRichTextWeather(location, condition, forecasts)
-            self.temp_external = int(condition.temp)
-            #Descargar imagen
-            url_imagen = "http://l.yimg.com/a/i/us/we/52/"+condition.code+".gif" # El link de la imagen
-            nombre_local_imagen = os.getcwd() + "/res/icon_weather.gif" # El nombre con el que queremos guardarla
+            nombre_local_imagen_1 = os.getcwd() + "/res/icon_weather.gif" # El nombre con el que queremos guardarla
+            nombre_local_imagen_2 = os.getcwd() + "/res/icon_weather2.gif" # El nombre con el que queremos guardarla
             try:
-                urlretrieve(url_imagen, nombre_local_imagen)
-            except:
-                logging.error ("Error trying to retrieve the icon weather")
+                location = weather.lookup_by_location(self.location)
+                condition = location.condition
+                forecasts = location.forecast
+                s = tools.getRichTextWeather(location, condition, forecasts)
+                self.temp_external = int(condition.temp)
+                #Descargar imagen
+                url_imagen = "http://l.yimg.com/a/i/us/we/52/"+condition.code+".gif" # El link de la imagen
+                
+                try:
+                    urlretrieve(url_imagen, nombre_local_imagen_1)
+                except:
+                    logging.error ("Error trying to retrieve the icon weather")
+                    
+                #Descargar imagen pronostico para maÃ±ana
+                url_imagen2 = "http://l.yimg.com/a/i/us/we/52/"+forecasts[1].code+".gif" # El link de la imagen
+                #print(url_imagen2)
+                
+                try:
+                    urlretrieve(url_imagen2, nombre_local_imagen_2)
+                except:
+                    logging.error ("Error trying to retrieve the icon weather2")
+                    
+            except Exception as e:
+                logging.error ("Error trying to get yahoo weather data. \nERROR: " + str(e))
+                s = "Sin datos meteorolÃ³gicos!"
+                if os.path.exists(nombre_local_imagen_1):
+                    os.remove(nombre_local_imagen_1)
+                if os.path.exists(nombre_local_imagen_2):
+                    os.remove(nombre_local_imagen_2)
+            
             self.emit(QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),s)
             
-            #Descargar imagen pronostico para mañana
-            url_imagen2 = "http://l.yimg.com/a/i/us/we/52/"+forecasts[1].code+".gif" # El link de la imagen
-            #print(url_imagen2)
-            nombre_local_imagen = os.getcwd() + "/res/icon_weather2.gif" # El nombre con el que queremos guardarla
-            try:
-                urlretrieve(url_imagen2, nombre_local_imagen)
-            except:
-                logging.error ("Error trying to retrieve the icon weather2")
+            
+            
 
         
     def _setLed(self, state):
+        ''' Method to control the led 
+        \param state State the led (RED, GREEN, OFF)'''
+        
         if state == "RED":
             GPIO.output(const.PIN_LED_A,True)
             GPIO.output(const.PIN_LED_B,False)
@@ -528,6 +621,16 @@ class main_thread(QThread):
         else:
             GPIO.output(const.PIN_LED_A,False)
             GPIO.output(const.PIN_LED_B,False)
+    
+    def _getLed(self):
+        A = GPIO.input(const.PIN_LED_A)
+        B = GPIO.input(const.PIN_LED_B)
+        if A == 1 and B == 0:
+            return "RED"
+        elif A == 0 and B == 1:
+            return "GREEN"
+        else:
+            return "OFF"
             
     #   
     def _alarm_control(self):
@@ -561,8 +664,8 @@ class main_thread(QThread):
         self.status_datos['alarma']   = 1
         
         ret = self.status_log.write(**self.status_datos)
-        if ret == True:
-            logging.info("Status data written in json file")
+        '''if ret == True:
+            logging.info("Status data written in json file")'''
         
     def _writeConfig(self):
         if (self.timer_config.expired() == True):
@@ -575,6 +678,23 @@ class main_thread(QThread):
         
 
     def run(self):
+        """ Run de main loop. 
+        
+            This is the endless method.
+            * Read 3 times the temperature sensor
+            * Create the signals to mannage the widgets:
+                - _updateBarTimer
+                - _updateHeatterWidget
+                - _updateWeatherText
+            * Endless loop:
+                - self._temperatureControl
+                - self._pirProcess
+                - self._weather_process
+                - self._writeData
+                - self._writeStatusData
+                - self._writeConfig
+                
+        """
         logging.info('Thread is started' )
 ##        watchdog = tools.Watchdog(60, self._watchdogHandler)
         #Start CONFIC scheduler --------------
@@ -618,39 +738,49 @@ class main_thread(QThread):
         self.pi.stop()
             
     def stop(self):
+        """ Command the stop of the thread.
+        
+        self.stopped is set.
+        """
         self.stopped = 1
 
 def main():
-        logging.info("MAIN Function")
-        app = QtGui.QApplication(sys.argv)
-        myapp = DomoControlFrame()
-        myapp.showFullScreen()
-        #myapp.show()
-        
-        ''' Main Loop '''
-        try:    
-            mainThread = main_thread(myapp)
-            mainThread.start()
-        except KeyboardInterrupt:
-              logging.info("KeyboardInterrupt")  
+    """ Main  function
+    
+    Raises:
+        KeyboardInterrupt
+    """
+    logging.info("MAIN Function")
+    app = QtGui.QApplication(sys.argv)
+    myapp = DomoControlFrame()
+    myapp.showFullScreen()
+    #myapp.show()
+    
+    ''' Main Loop '''
+    try:    
+        mainThread = main_thread(myapp)
+        mainThread.start()
+    except KeyboardInterrupt:
+          logging.info("KeyboardInterrupt")  
 ##        except:
 ##            print ("Error starting the Main thread")
 
-        
-        try:
-            sys.exit(app.exec_())
-        except:
-            logging.info("except app.exec")
-            GPIO.cleanup() # this ensures a clean exit 
-        finally:  
-            #GPIO.cleanup() # this ensures a clean exit  
-            mainThread.stop()
-            logging.info("finally app.exec")
+    
+    try:
+        sys.exit(app.exec_())
+    except:
+        logging.info("except app.exec")
+        GPIO.cleanup() # this ensures a clean exit 
+    finally:  
+        #GPIO.cleanup() # this ensures a clean exit  
+        mainThread.stop()
+        logging.info("finally app.exec")
 
 
 if __name__ == "__main__":
-    #logging.basicConfig(filename='log/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
-    logging.basicConfig(format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
+    """ Enter point """
+    logging.basicConfig(filename=os.getcwd() +'/log/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
+    #logging.basicConfig(format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
     
     
     main()

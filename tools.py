@@ -89,29 +89,51 @@ def getMedia(lista,newValue):
     salida = round(cocie,1)
     return salida
 
-def getRichTextWeather(location, condition, forecasts):
+def getRichTextWeather(observation, w3, wt):
+    w = observation.get_weather()
+    location = observation.get_location()
+    t = w.get_temperature(unit='celsius')
+    wind = w.get_wind(unit='meters_sec')
+    rain = w.get_rain() 
+    str_rain = "NA"
+    if (len(rain) > 0):
+        str_rain = str(rain['1h']) + " mm"
+    snow = w.get_snow() 
+    str_snow = "NA"
+    if (len(snow) > 0):
+        str_snow = str(snow['1h']) + " mm"
+        
+    sr = w.get_sunrise_time('iso')
+    str_sr = sr[11:16]
+    ss = w.get_sunset_time('iso')
+    str_ss = ss[11:16]
+    
+    t3 = w3.get_temperature(unit='celsius')
+    tt = wt.get_temperature(unit='celsius')
+    
     h1 = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd"> \
     <html><head><meta name="qrichtext" content="1" /><style type="text/css"> \
     p, li { white-space: pre-wrap; } \
-    </style></head><body style=" font-family:''Ubuntu Condensed''; font-size:11pt; font-weight:400; font-style:normal;">'
+    </style></head><body style=" font-family:''Ubuntu Condensed''; font-size:9pt; font-weight:400; font-style:normal;">'
 
     s1 = '<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:''Ubuntu'';">'
     s2 = '<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:''Ubuntu'';"><br /></p>'
     s3 = '<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:''Ubuntu''; font-weight:600;">'
     s = h1 \
-    +s1+location.location.city +" - "+ location.location.region + "</span></p>" \
-    +s1+condition.date + "</span></p>" \
+    +s1+location.get_name() +" - "+ "ES" + "</span></p>" \
+    +s1+w.get_reference_time(timeformat='iso')  + "</span></p>" \
     +s2 \
     +s3+"Condiciones actuales:"+ "</span></p>" \
-    +s1+condition.text + "</span></p>" \
-    +s1+condition.temp + " º"+location.units.temperature + "</span></p>" \
-    +s1+forecasts[0].high + "º / "+forecasts[0].low + "º"+"</span></p>" \
-    +s1+location.wind.speed + " "+location.units.speed+ "</span></p>" \
-    +s1+location.atmosphere.humidity + " %</span></p>" \
-    +s1+"Sol: "+location.astronomy.sunrise + " - "+location.astronomy.sunset + "</span></p>"\
+    +s1+w.get_detailed_status() + "</span></p>" \
+    +s1+str(t['temp']) + " ºC  - " + str(w.get_humidity()) + " %</span></p>" \
+    +s1+str(t['temp_max']) + "ºC / "+str(t['temp_min']) + "ºC"+"</span></p>" \
+    +s1+str(wind['speed']) + " m/s  -  "+ str(wind['deg']) + " º"+"</span></p>" \
+    +s1+"Lluvia: "+str_rain + " - "+"Nieve: "+str_snow + "</span></p>" \
+    +s1+"Sol: "+str_sr  + " - "+str_ss + "</span></p>"\
     +s1+"------------------------------------"+ "</span></p>" \
-    +s3+"Mañana:"+ "</span></p>" \
-    +s1+forecasts[1].day + "\t"+forecasts[1].high + "ºC / "+forecasts[1].low + "ºC"+"</span></p>"  \
+    +s3+"Pronosticos:"+ "</span></p>" \
+    +s1+(w3.get_reference_time(timeformat='iso'))[8:16]+","+w3.get_detailed_status() + ","+str(t3['temp_max']) + "ºC / "+str(t3['temp_min']) + "ºC"+"</span></p>"  \
+    +s1+(wt.get_reference_time(timeformat='iso'))[8:16]+","+wt.get_status() + ","+str(tt['temp_max']) + "ºC / "+str(tt['temp_min']) + "ºC"+"</span></p>"  \
     +s2 \
     +s1+"------------------------------------"+ "</span></p>" 
     return s

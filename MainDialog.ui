@@ -615,7 +615,7 @@ p, li { white-space: pre-wrap; }
     <string/>
    </property>
    <property name="pixmap">
-    <pixmap>res/icon_weather.gif</pixmap>
+    <pixmap>res/icon_weather.png</pixmap>
    </property>
   </widget>
   <widget class="QLabel" name="label_alarm_2">
@@ -663,7 +663,7 @@ p, li { white-space: pre-wrap; }
     <string/>
    </property>
    <property name="pixmap">
-    <pixmap>res/icon_weather2.gif</pixmap>
+    <pixmap>res/icon_weather2.png</pixmap>
    </property>
   </widget>
   <zorder>frame_2</zorder>

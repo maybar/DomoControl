@@ -22,7 +22,8 @@ import pickle
 from PyQt4.QtGui import QApplication, QMessageBox
 
 import logging
-from weather import Weather, Unit
+import pyowm    #Open weather
+from pyowm import timeutils
 import constants as const
 import psutil
 
@@ -139,9 +140,9 @@ class DomoControlFrame(QtGui.QDialog):
     def showWeather(self, rich_text):
         self.ui.text_weather.setHtml(rich_text)
         self.ui.text_weather.update()
-        self.ui.icon_condition.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/icon_weather.gif"))
+        self.ui.icon_condition.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/icon_weather.png"))
         self.ui.icon_condition.update()
-        self.ui.icon_condition_2.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/icon_weather2.gif"))
+        self.ui.icon_condition_2.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/icon_weather2.png"))
         self.ui.icon_condition_2.update()
     
     def setTime(self,ahora):
@@ -243,7 +244,7 @@ class main_thread(QThread):
         self.hora_start_low = datetime.time(0,0,0)
         self.cycle_caldera = 15*60     #15 o 20 minutos
         self.max_time_caldera = 10*60     #10 min max time the caldera can be active
-        self.location = "Usurbil"
+        self.location = "Usurbil,ES"
         self.cond_protection = True
         self.save_history = False
         #-------------------------------------------
@@ -567,18 +568,33 @@ class main_thread(QThread):
             
     def _weather_process(self):
         """ Show the external weather information """
-        if (self.timer_weather.expired() == True):
-            weather = Weather(unit=Unit.CELSIUS)
-            nombre_local_imagen_1 = os.getcwd() + "/res/icon_weather.gif" # El nombre con el que queremos guardarla
-            nombre_local_imagen_2 = os.getcwd() + "/res/icon_weather2.gif" # El nombre con el que queremos guardarla
+        owm = pyowm.OWM('9aee4fb7c7506e85af9550c30c4ce886', language="es") 
+        if ((self.timer_weather.expired() == True) and (owm.is_API_online())):
+            # Search for current weather in City (country)
+            observation = owm.weather_at_place(self.location)
+            weather = observation.get_weather()
+            
+            # Forecasts
+            forecaster = owm.three_hours_forecast(self.location)
+            #
+            date_3 = timeutils.next_three_hours()
+            weather_3h = forecaster.get_weather_at(date_3)
+            #
+            date_tomorrow = timeutils.tomorrow() 
+            weather_tomorrow= forecaster.get_weather_at(date_tomorrow)
+            
+            nombre_local_imagen_1 = os.getcwd() + "/res/icon_weather.png" # El nombre con el que queremos guardarla
+            nombre_local_imagen_2 = os.getcwd() + "/res/icon_weather2.png" # El nombre con el que queremos guardarla
+            
+            t = weather.get_temperature(unit='celsius')
+            self.temp_external = int(t['temp'])
+            
             try:
-                location = weather.lookup_by_location(self.location)
-                condition = location.condition
-                forecasts = location.forecast
-                s = tools.getRichTextWeather(location, condition, forecasts)
-                self.temp_external = int(condition.temp)
+
+                s = tools.getRichTextWeather(observation, weather_3h, weather_tomorrow)
+                
                 #Descargar imagen
-                url_imagen = "http://l.yimg.com/a/i/us/we/52/"+condition.code+".gif" # El link de la imagen
+                url_imagen = weather.get_weather_icon_url()  # El link de la imagen
                 
                 try:
                     urlretrieve(url_imagen, nombre_local_imagen_1)
@@ -586,7 +602,7 @@ class main_thread(QThread):
                     logging.error ("Error trying to retrieve the icon weather")
                     
                 #Descargar imagen pronostico para mañana
-                url_imagen2 = "http://l.yimg.com/a/i/us/we/52/"+forecasts[1].code+".gif" # El link de la imagen
+                url_imagen2 = weather_tomorrow.get_weather_icon_url() # El link de la imagen
                 #print(url_imagen2)
                 
                 try:
@@ -596,7 +612,8 @@ class main_thread(QThread):
                     
             except Exception as e:
                 logging.error ("Error trying to get yahoo weather data. \nERROR: " + str(e))
-                s = "Sin datos meteorológicos!"
+                print(str(e))
+                s = "Sin datos meteorológicos OpenWeather!"
                 if os.path.exists(nombre_local_imagen_1):
                     os.remove(nombre_local_imagen_1)
                 if os.path.exists(nombre_local_imagen_2):
@@ -779,8 +796,8 @@ def main():
 
 if __name__ == "__main__":
     """ Enter point """
-    logging.basicConfig(filename=os.getcwd() +'/log/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
-    #logging.basicConfig(format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
+    #logging.basicConfig(filename=os.getcwd() +'/log/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
+    logging.basicConfig(format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
     
     
     main()

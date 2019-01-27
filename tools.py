@@ -6,7 +6,7 @@ import datetime
 import time
 import smtplib
 import json
-
+import pytz
 
 #Tabla for Bochorno termico
 humiNames = ['0','5','10','15','20','25','30','35','40','45','50','55','60','65','70','75','80','85','90','95','100']
@@ -89,57 +89,41 @@ def getMedia(lista,newValue):
     salida = round(cocie,1)
     return salida
 
-def getRichTextWeather(observation, w3, wt):
-    w = observation.get_weather()
-    location = observation.get_location()
-    t = w.get_temperature(unit='celsius')
-    wind = w.get_wind(unit='meters_sec')
-    rain = w.get_rain() 
-    str_rain = "NA"
-    if (len(rain) > 0):
-        str_rain = str(rain['1h']) + " mm"
-    snow = w.get_snow() 
-    str_snow = "NA"
-    if (len(snow) > 0):
-        str_snow = str(snow['1h']) + " mm"
-        
-    sr = w.get_sunrise_time('iso')
-    str_sr = sr[11:16]
-    ss = w.get_sunset_time('iso')
-    str_ss = ss[11:16]
-    
-    t3 = w3.get_temperature(unit='celsius')
-    tt = wt.get_temperature(unit='celsius')
-    
-    h1 = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd"> \
-    <html><head><meta name="qrichtext" content="1" /><style type="text/css"> \
-    p, li { white-space: pre-wrap; } \
-    </style></head><body style=" font-family:''Ubuntu Condensed''; font-size:9pt; font-weight:400; font-style:normal;">'
+def utc_to_local(utc_dt):
+    local_tz = pytz.timezone('Europe/Madrid')
+    local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
+    return local_dt
 
-    s1 = '<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:''Ubuntu'';">'
-    s2 = '<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:''Ubuntu'';"><br /></p>'
-    s3 = '<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:''Ubuntu''; font-weight:600;">'
-    s = h1 \
-    +s1+location.get_name() +" - "+ "ES" + "</span></p>" \
-    +s1+w.get_reference_time(timeformat='iso')  + "</span></p>" \
-    +s2 \
-    +s3+"Condiciones actuales:"+ "</span></p>" \
-    +s1+w.get_detailed_status() + "</span></p>" \
-    +s1+str(t['temp']) + " ºC  - " + str(w.get_humidity()) + " %</span></p>" \
-    +s1+str(t['temp_max']) + "ºC / "+str(t['temp_min']) + "ºC"+"</span></p>" \
-    +s1+str(wind['speed']) + " m/s  -  "+ str(wind['deg']) + " º"+"</span></p>" \
-    +s1+"Lluvia: "+str_rain + " - "+"Nieve: "+str_snow + "</span></p>" \
-    +s1+"Sol: "+str_sr  + " - "+str_ss + "</span></p>"\
-    +s1+"------------------------------------"+ "</span></p>" \
-    +s3+"Pronosticos:"+ "</span></p>" \
-    +s1+(w3.get_reference_time(timeformat='iso'))[8:16]+","+w3.get_detailed_status() + ","+str(t3['temp_max']) + "ºC / "+str(t3['temp_min']) + "ºC"+"</span></p>"  \
-    +s1+(wt.get_reference_time(timeformat='iso'))[8:16]+","+wt.get_status() + ","+str(tt['temp_max']) + "ºC / "+str(tt['temp_min']) + "ºC"+"</span></p>"  \
-    +s2 \
-    +s1+"------------------------------------"+ "</span></p>" 
-    return s
+def aslocaltimestr(utc_dt):
+    return utc_to_local(utc_dt).strftime('%Y-%m-%d %H:%M:%S.%f %Z%z')
+
+class HtmlText:
+    def __init__(self, font_size):
+        h1 = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd"> \
+        <html><head><meta name="qrichtext" content="1" /><style type="text/css"> \
+        p, li { white-space: pre-wrap; } \
+        </style></head><body style=" font-family:''Ubuntu Condensed''; font-size:'+str(font_size)+'pt; font-weight:400; font-style:normal;">'
+        self.s1 = '<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:''Ubuntu'';">'
+        self.s2 = '<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:''Ubuntu'';"><br /></p>'
+        self.s3 = '<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:''Ubuntu''; font-weight:600;">'
+        self.s = h1 
+
+    def add_text(self, text):
+        self.s = self.s + self.s1 + text + "</span></p>" 
+        
+    def add_empty_line(self):
+        self.s = self.s + self.s2 
+        
+    def add_title(self, text):
+        self.s = self.s + self.s3 + text + "</span></p>" 
+        
+    def get_text(self):
+        return self.s
+    
 
 from threading import Timer
-
+        
+    
 class Watchdog:
     def __init__(self, timeout, userHandler=None):  # timeout in seconds
         self.timeout = timeout

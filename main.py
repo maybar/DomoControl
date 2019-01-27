@@ -26,6 +26,7 @@ import pyowm    #Open weather
 from pyowm import timeutils
 import constants as const
 import psutil
+import pytz
 
 class DomoControlFrame(QtGui.QDialog):
     """This class docstring shows how to use sphinx and rst syntax
@@ -142,8 +143,12 @@ class DomoControlFrame(QtGui.QDialog):
         self.ui.text_weather.update()
         self.ui.icon_condition.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/icon_weather.png"))
         self.ui.icon_condition.update()
-        self.ui.icon_condition_2.setPixmap(QtGui.QPixmap(os.getcwd() + "/res/icon_weather2.png"))
-        self.ui.icon_condition_2.update()
+        
+        
+    def showStatus(self, status):
+        self.ui.label_weather_status.setText(status)
+        self.ui.label_weather_status.update()
+        
     
     def setTime(self,ahora):
         ''' Show the hour '''
@@ -263,8 +268,8 @@ class main_thread(QThread):
                 self.myapp.modeApagado()
                 
             self.watchdog_counter = config_list[1]
-        except:
-            logging.error('Error opening config file')
+        except Exception as e:
+            logging.critical('Error opening config file \n'+str(e))
 
         
         #Config GPIO
@@ -331,7 +336,11 @@ class main_thread(QThread):
         
         """
         #humidity, temperature = Adafruit_DHT.read_retry(11, const.PIN_SENSOR_TEMP)
-        humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, const.PIN_SENSOR_TEMP)
+        try:
+            humidity, temperature = Adafruit_DHT.read(Adafruit_DHT.DHT22, const.PIN_SENSOR_TEMP)
+        except Exception as e:
+            logging.critical("Error en librería de lectura de sensor \n"+str(e))
+            
         self.num_read+=1
         if humidity is not None and temperature is not None and humidity <= 100.0 and humidity >= 0.0:
             #redondear
@@ -368,6 +377,10 @@ class main_thread(QThread):
     def _updateWeatherText(self,value):
         """ Update the dialog GUI for the Weather panel"""
         self.myapp.showWeather(value)
+        
+    '''def _updateWeatherStatusText(self,value):
+        """ Update the dialog GUI for the current Weather status"""
+        self.myapp.showStatus(value)'''
         
     #   
     def _temperatureControl(self):
@@ -493,8 +506,8 @@ class main_thread(QThread):
             result = False
             try:
                 result = self.radio_tx.put(msg)
-            except:
-                logging.error("EXCEPTION: self.radio_tx.put")
+            except Exception as e:
+                logging.critical("EXCEPTION: self.radio_tx.put\n"+ str(e))
             if result == True:
                 s="Tx radio: "+msg
                 logging.info(s)
@@ -540,8 +553,8 @@ class main_thread(QThread):
         #print("EmoncmsData: "+s)
         try:
             contents = urlopen(s).read()
-        except:
-            logging.error ("Error sending data to Emoncms")
+        except Exception as e:
+            logging.critical ("Error sending data to Emoncms\n"+str(e))
         #print("EmoncmsData "+contents)
 
     def _lightProcess(self):
@@ -573,55 +586,84 @@ class main_thread(QThread):
             # Search for current weather in City (country)
             observation = owm.weather_at_place(self.location)
             weather = observation.get_weather()
-            
-            # Forecasts
-            forecaster = owm.three_hours_forecast(self.location)
-            #
-            date_3 = timeutils.next_three_hours()
-            weather_3h = forecaster.get_weather_at(date_3)
-            #
-            date_tomorrow = timeutils.tomorrow() 
-            weather_tomorrow= forecaster.get_weather_at(date_tomorrow)
+            location = observation.get_location()
             
             nombre_local_imagen_1 = os.getcwd() + "/res/icon_weather.png" # El nombre con el que queremos guardarla
-            nombre_local_imagen_2 = os.getcwd() + "/res/icon_weather2.png" # El nombre con el que queremos guardarla
-            
-            t = weather.get_temperature(unit='celsius')
-            self.temp_external = int(t['temp'])
             
             try:
+                rich_text_weather = tools.HtmlText(10)
+                rich_text_weather.add_text(location.get_name() +" - "+ "ES")
+                local_reference_time = tools.utc_to_local(weather.get_reference_time(timeformat='date')).strftime('%d-%m-%Y %H:%M')
+                rich_text_weather.add_text(local_reference_time)
+                rich_text_weather.add_empty_line()
+                rich_text_weather.add_title("Condiciones actuales:")
+                rich_text_weather.add_text(weather.get_detailed_status())
+                temp = weather.get_temperature(unit='celsius')
+                self.temp_external = int(temp['temp'])
+                rich_text_weather.add_text(str(temp['temp']) + " ºC  - " + str(weather.get_humidity()) + " %")
+                rich_text_weather.add_text(str(temp['temp_max']) + "ºC / "+str(temp['temp_min']) + "ºC")
+                wind = weather.get_wind(unit='meters_sec')
+                wind_speed = ""
+                wind_deg = ""
+                if (len(wind) > 0):
+                    wind_speed = str(wind['speed']) + " m/s"
+                elif (len(wind) > 1):
+                    wind_deg = " - "+str(wind['deg']) + " º"
+                rich_text_weather.add_text(wind_speed + wind_deg)
+                rain = weather.get_rain() 
+                str_rain = "NA"
+                if (len(rain) > 0):
+                    str_rain = str(rain['1h']) + " mm"
+                snow = weather.get_snow() 
+                str_snow = "NA"
+                if (len(snow) > 0):
+                    str_snow = str(snow['1h']) + " mm"
+                rich_text_weather.add_text("Lluvia: "+str_rain + " - "+"Nieve: "+str_snow)
+                sr = weather.get_sunrise_time('date')
+                str_sr = tools.utc_to_local(sr).strftime('%H:%M')
 
-                s = tools.getRichTextWeather(observation, weather_3h, weather_tomorrow)
+                ss = weather.get_sunset_time('date')
+                str_ss = tools.utc_to_local(ss).strftime('%H:%M')
+                rich_text_weather.add_text("Sol: "+str_sr  + " - "+str_ss)
+                rich_text_weather.add_text("------------------------------------")
+                rich_text_weather.add_title("Pronósticos:")
+                
+                # Forecasts
+                forecaster = owm.three_hours_forecast(self.location)
+                #
+                
+                # Tomorrow
+                f = forecaster.get_forecast()
+                date_tomorrow = timeutils.tomorrow() 
+                cont = 0
+                for weather_tomorrow in f:
+                    reference_time = weather_tomorrow.get_reference_time('date')
+                    if reference_time.day <= date_tomorrow.day and (cont < 8):
+                        tt = weather_tomorrow.get_temperature(unit='celsius')
+                        str_local_time_wt = tools.utc_to_local(weather_tomorrow.get_reference_time(timeformat='date')).strftime('%d %H:%M')
+                        rich_text_weather.add_text(str_local_time_wt+" "+weather_tomorrow.get_status() + " "+str(tt['temp']) + "ºC")
+                        cont = cont+1
+                
+                s = rich_text_weather.get_text()
                 
                 #Descargar imagen
                 url_imagen = weather.get_weather_icon_url()  # El link de la imagen
+                self.myapp.showStatus(weather.get_status())
                 
                 try:
                     urlretrieve(url_imagen, nombre_local_imagen_1)
-                except:
-                    logging.error ("Error trying to retrieve the icon weather")
+                except Exception as e:
+                    logging.error ("Error trying to retrieve the icon weather\n"+str(e))
                     
-                #Descargar imagen pronostico para mañana
-                url_imagen2 = weather_tomorrow.get_weather_icon_url() # El link de la imagen
-                #print(url_imagen2)
-                
-                try:
-                    urlretrieve(url_imagen2, nombre_local_imagen_2)
-                except:
-                    logging.error ("Error trying to retrieve the icon weather2")
                     
             except Exception as e:
-                logging.error ("Error trying to get yahoo weather data. \nERROR: " + str(e))
+                logging.error ("Error trying to get Open weather data. \nERROR: " + str(e))
                 print(str(e))
                 s = "Sin datos meteorológicos OpenWeather!"
                 if os.path.exists(nombre_local_imagen_1):
                     os.remove(nombre_local_imagen_1)
-                if os.path.exists(nombre_local_imagen_2):
-                    os.remove(nombre_local_imagen_2)
             
             self.emit(QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),s)
-            
-            
             
 
         
@@ -785,8 +827,8 @@ def main():
     
     try:
         sys.exit(app.exec_())
-    except:
-        logging.info("except app.exec")
+    except Exception as e:
+        logging.info("except app.exec\n"+str(e))
         GPIO.cleanup() # this ensures a clean exit 
     finally:  
         #GPIO.cleanup() # this ensures a clean exit  
@@ -796,8 +838,8 @@ def main():
 
 if __name__ == "__main__":
     """ Enter point """
-    #logging.basicConfig(filename=os.getcwd() +'/log/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
-    logging.basicConfig(format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
+    logging.basicConfig(filename=os.getcwd() +'/log/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.WARNING)
+    #logging.basicConfig(format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
     
     
     main()

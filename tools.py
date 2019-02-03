@@ -7,6 +7,8 @@ import time
 import smtplib
 import json
 import pytz
+import RPi.GPIO as GPIO
+import email
 
 #Tabla for Bochorno termico
 humiNames = ['0','5','10','15','20','25','30','35','40','45','50','55','60','65','70','75','80','85','90','95','100']
@@ -231,6 +233,166 @@ class Timer:
     
              
     
+class LedDualColor:
     
+    def __init__(self, PinA, PinB): 
+        self.pin_a = PinA
+        self.pin_b = PinB
+        GPIO.setup(PinA,GPIO.OUT)
+        GPIO.setup(PinB,GPIO.OUT)
+        
+    def setState(self, state):
+        ''' Method to control the led 
+        \param state State the led (RED, GREEN, OFF)'''
+        
+        if state == "RED":
+            GPIO.output(self.pin_a,True)
+            GPIO.output(self.pin_b,False)
+        elif state == "GREEN":
+            GPIO.output(self.pin_a,False)
+            GPIO.output(self.pin_b,True)
+        else:
+            GPIO.output(self.pin_a,False)
+            GPIO.output(self.pin_b,False)
     
+    def getState(self):
+        A = GPIO.input(self.pin_a)
+        B = GPIO.input(self.pin_b)
+        if A == 1 and B == 0:
+            return "RED"
+        elif A == 0 and B == 1:
+            return "GREEN"
+        else:
+            return "OFF"
+        
+    def toggle(self, color):
+        if (self.getState() == color) :
+            self.setState("OFF")
+        else:
+            self.setState(color)
+            
+ 
+import smtplib
+# Import the email modules we'll need
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import traceback
+import imaplib
+import email  
+
+class Email:
+    def __init__(self, private):
+        self.private = private
+        self.mail = imaplib.IMAP4_SSL(self.private.SMTP_SERVER)
+        self.mail.login(self.private.FROM_EMAIL,self.private.FROM_PWD)
+        self.mail.select('inbox')
+        
+    def send_email(self, subject, body):
+        msg = MIMEMultipart()
+        msg['Subject'] = subject
+        msg['From'] = self.private.FROM_EMAIL
+        msg['To'] = self.private.TO_EMAIL
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Send the message via our own SMTP server, but don't include the
+        # envelope header.
+        smtpserver = smtplib.SMTP(self.private.SMTP_SERVER, self.private.SMTP_PORT)
+        smtpserver.ehlo()
+        smtpserver.starttls()
+        smtpserver.ehlo
+        smtpserver.login(self.private.FROM_EMAIL, self.private.FROM_PWD) 
+        smtpserver.sendmail(self.private.FROM_EMAIL, self.private.TO_EMAIL, msg.as_string())
+        smtpserver.close()
+
+    def get_decoded_email_body(self, message_body):
+        """ Decode email body.
+        Detect character set if the header is not set.
+        We try to get text/plain, but if there is not one then fallback to text/html.
+        :param message_body: Raw 7-bit message body input e.g. from imaplib. Double encoded in quoted-printable and latin-1
+        :return: Message body as unicode string
+        """
+
+        msg = email.message_from_string(message_body)
+
+        text = ""
+        if msg.is_multipart():
+            html = None
+            for part in msg.get_payload():
+
+                #print "%s, %s" % (part.get_content_type(), part.get_content_charset())
+
+                if part.get_content_charset() is None:
+                    # We cannot know the character set, so return decoded "something"
+                    text = part.get_payload(decode=True)
+                    continue
+
+                charset = part.get_content_charset()
+
+                if part.get_content_type() == 'text/plain':
+                    text = str(part.get_payload(decode=True), str(charset), "ignore").encode('utf8', 'replace')
+
+                if part.get_content_type() == 'text/html':
+                    html = str(part.get_payload(decode=True), str(charset), "ignore").encode('utf8', 'replace')
+
+            if text is not None:
+                return text.strip()
+            else:
+                return html.strip()
+        else:
+            text = str(msg.get_payload(decode=True), msg.get_content_charset(), 'ignore').encode('utf8', 'replace')
+        
+        return text.strip()
     
+    def receive_email(self):
+        self.mail.select('inbox')
+        status, response = self.mail.uid('search', None, 'UNSEEN SUBJECT "DOMO-CMD"')
+        if status == 'OK':
+            unread_msg_nums = response[0].split()
+        else:
+            unread_msg_nums = []
+        data_list = []
+        for e_id in unread_msg_nums:
+            data_dict = {}
+            e_id = e_id.decode('utf-8')
+            _, response = self.mail.uid('fetch', e_id, '(RFC822)')
+            html = response[0][1].decode('utf-8')
+            email_message = email.message_from_string(html)
+            data_dict['mail_to'] = email_message['To']
+            data_dict['mail_subject'] = email_message['Subject']
+            data_dict['mail_from'] = email.utils.parseaddr(email_message['From'])
+            data_dict['body'] = get_decoded_email_body(html)
+            data_list.append(data_dict)
+        print(data_list)
+        
+    def receive_domo_cmd(self):
+        self.mail.select('inbox')
+        status, response = self.mail.uid('search', None, 'UNSEEN SUBJECT "DOMO-CMD"')
+        if status == 'OK':
+            unread_msg_nums = response[0].split()
+        else:
+            unread_msg_nums = []
+        
+        result = False
+        data_dict = {}
+        if (len(unread_msg_nums) > 0):
+            e_id = unread_msg_nums[0]
+            e_id = e_id.decode('utf-8')
+            _, response = self.mail.uid('fetch', e_id, '(RFC822)')
+            html = response[0][1].decode('utf-8')
+            email_message = email.message_from_string(html)
+            data_dict['mail_to'] = email_message['To']
+            data_dict['mail_subject'] = email_message['Subject']
+            data_dict['mail_from'] = email.utils.parseaddr(email_message['From'])
+            data_dict['body'] = self.get_decoded_email_body(html).decode('utf-8')
+            #self.mail.store(unread_msg_nums[0].replace(' ',','),'+FLAGS','\Deleted')
+            result = True
+        return result, data_dict
+            
+
+        
+        
+        
+        
+        
+        
+        

@@ -12,7 +12,8 @@ from PyQt4.QtCore import QThread, Qt
 import RPi.GPIO as GPIO
 import time
 import datetime
-from urllib.request import urlopen, urlretrieve
+import certifi
+import urllib3
 import tools
 #RADIO communication
 import piVirtualWire.piVirtualWire as piVirtualWire
@@ -27,6 +28,8 @@ from pyowm import timeutils
 import constants as const
 import psutil
 import pytz
+import private_data as private
+import shutil
 
 class DomoControlFrame(QtGui.QDialog):
     """This class docstring shows how to use sphinx and rst syntax
@@ -234,7 +237,6 @@ class main_thread(QThread):
         self.watchdog_counter = 0
         self.temp_external = 22
         self.sm_caldera = "IDLE"  #state machine for heater protection
-        self.toggle = False
         #------------------------------------------
         
         
@@ -252,33 +254,35 @@ class main_thread(QThread):
         self.location = "Usurbil,ES"
         self.cond_protection = True
         self.save_history = False
+        self.email = tools.Email(private)
+        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',ca_certs=certifi.where())
         #-------------------------------------------
         try:
-            f = open ('config.pickle','rb')
-            config_list = pickle.load(f)
-            f.close()
-            self.mode = config_list[0]
-            if config_list[0] == "AUTO":
-                self.myapp.modeAuto()
-            elif config_list[0] == "T.ALTA":
-                self.myapp.modeAlta()
-            elif config_list[0] == "T.BAJA":
-                self.myapp.modeBaja()
-            else:
-                self.myapp.modeApagado()
-                
-            self.watchdog_counter = config_list[1]
+            with open ('config.pickle','rb') as f:
+                config_list = pickle.load(f)
+                f.close()
+                self.mode = config_list[0]
+                if config_list[0] == "AUTO":
+                    self.myapp.modeAuto()
+                elif config_list[0] == "T.ALTA":
+                    self.myapp.modeAlta()
+                elif config_list[0] == "T.BAJA":
+                    self.myapp.modeBaja()
+                else:
+                    self.myapp.modeApagado()
+                    
+                self.watchdog_counter = config_list[1]
         except Exception as e:
             logging.critical('Error opening config file \n'+str(e))
 
         
         #Config GPIO
         GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
         #configure the pin of PIR
         GPIO.setup(const.PIN_PIR, GPIO.IN)
         #configure the pines to control the bicolor led
-        GPIO.setup(const.PIN_LED_A,GPIO.OUT)
-        GPIO.setup(const.PIN_LED_B,GPIO.OUT)
+        self.led = tools.LedDualColor(const.PIN_LED_A, const.PIN_LED_B)
         #configure the pines for light sensor
         GPIO.setup(const.PIN_LDR_CHARGE,GPIO.IN)
         GPIO.setup(const.PIN_LDR_DISCHARGE, GPIO.IN) 
@@ -309,6 +313,7 @@ class main_thread(QThread):
         self.timer_config = tools.Timer(5)     #timer to write de config data
         self.timer_pir = tools.Timer(50)
         self.timer_weather = tools.Timer(900) #update each 15 min
+        self.timer_email = tools.Timer(5) #update each 1 min
         #self.timer_one_sec = tools.Timer(1)
         #-----------------------------------------------
         
@@ -359,8 +364,9 @@ class main_thread(QThread):
             #
             self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp)
         else:
-            logging.warning('Error lectura sensor DHT11')
             self.num_failures+=1
+            logging.info('Invalid DHT11 sensor data. Num Failures: '+str(self.num_failures))
+            
             
     def _updateBarTimer(self,value):
         """ Update the bar timer in the dialog GUI 
@@ -432,7 +438,7 @@ class main_thread(QThread):
                 self.timer_heater_on.restart()
                 self.timer_cycle_caldera.restart()
                 self.sm_caldera = "WORKING"
-                self._setLed('OFF')
+                self.led.setState('OFF')
         elif self.sm_caldera == "WORKING":
             time_heater_on = self.timer_heater_on.elapsed()
             self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
@@ -444,14 +450,10 @@ class main_thread(QThread):
             if self.caldera == False:
                 self.sm_caldera = "WAITING"
                 #print ("Caldera se apagó. Espera")
-            if self.toggle == True:
-                self._setLed('GREEN')
-                self.toggle = False
-            else:
-                self._setLed('OFF')
-                self.toggle = True
+            self.led.toggle('GREEN')
+            
         elif self.sm_caldera == "WAITING": 
-            self._setLed('GREEN')
+            self.led.setState('GREEN')
             caldera_enable = False
             self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder()))) 
             if self.timer_cycle_caldera.expired() == True:
@@ -469,13 +471,13 @@ class main_thread(QThread):
         # Cycle to read sensor --------------------------------------
         if self.timer_sensor.expired():
             #current_led_state = self._getLed()
-            self._setLed('GREEN')
+            self.led.setState('GREEN')
             old_temp=self.sensor_temp
             old_hum=self.sensor_humidity
             self._get_temp()
             # Write log on internet
             send_emomcms_data = True
-            self._setLed('OFF')
+            self.led.setState('OFF')
                 
                 
             
@@ -552,7 +554,8 @@ class main_thread(QThread):
         s = 'https://emoncms.org/input/post?node='+str(id)+'&fulljson={'+var_data+'}&apikey=9771b32a0de292aabb7f01cfdcad146b'
         #print("EmoncmsData: "+s)
         try:
-            contents = urlopen(s).read()
+            r = self.http.request('GET', s, timeout=2.0, retries=False)
+            r.release_conn()
         except Exception as e:
             logging.critical ("Error sending data to Emoncms\n"+str(e))
         #print("EmoncmsData "+contents)
@@ -581,7 +584,13 @@ class main_thread(QThread):
             
     def _weather_process(self):
         """ Show the external weather information """
-        owm = pyowm.OWM('9aee4fb7c7506e85af9550c30c4ce886', language="es") 
+        try:
+            owm = pyowm.OWM(private.OWKEY, language="es") 
+        except Exception as e:
+            logging.error ("Error trying to connect to OWM\n"+str(e))
+            self.emit(QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),"Sin datos metereológicos!")
+            return
+            
         if ((self.timer_weather.expired() == True) and (owm.is_API_online())):
             # Search for current weather in City (country)
             observation = owm.weather_at_place(self.location)
@@ -607,18 +616,22 @@ class main_thread(QThread):
                 wind_deg = ""
                 if (len(wind) > 0):
                     wind_speed = str(wind['speed']) + " m/s"
-                elif (len(wind) > 1):
-                    wind_deg = " - "+str(wind['deg']) + " º"
+                if (len(wind) > 1):
+                    try:
+                        wind_deg = " - "+str(wind['deg']) + "º"
+                    except:
+                        logging.info ("No wind heading")
                 rich_text_weather.add_text(wind_speed + wind_deg)
                 rain = weather.get_rain() 
-                str_rain = "NA"
+                str_rain = ""
                 if (len(rain) > 0):
-                    str_rain = str(rain['1h']) + " mm"
+                    str_rain = "Lluvia: "+str(rain['1h']) + " mm   "
                 snow = weather.get_snow() 
-                str_snow = "NA"
+                str_snow = ""
                 if (len(snow) > 0):
-                    str_snow = str(snow['1h']) + " mm"
-                rich_text_weather.add_text("Lluvia: "+str_rain + " - "+"Nieve: "+str_snow)
+                    str_snow = "Nieve: "+str(snow['1h']) + " mm"
+                if (str_rain != "") or (str_snow!=""):
+                    rich_text_weather.add_text(str_rain + str_snow)
                 sr = weather.get_sunrise_time('date')
                 str_sr = tools.utc_to_local(sr).strftime('%H:%M')
 
@@ -631,19 +644,30 @@ class main_thread(QThread):
                 # Forecasts
                 forecaster = owm.three_hours_forecast(self.location)
                 #
-                
-                # Tomorrow
                 f = forecaster.get_forecast()
-                date_tomorrow = timeutils.tomorrow() 
-                cont = 0
-                for weather_tomorrow in f:
-                    reference_time = weather_tomorrow.get_reference_time('date')
-                    if reference_time.day <= date_tomorrow.day and (cont < 8):
-                        tt = weather_tomorrow.get_temperature(unit='celsius')
-                        str_local_time_wt = tools.utc_to_local(weather_tomorrow.get_reference_time(timeformat='date')).strftime('%d %H:%M')
-                        rich_text_weather.add_text(str_local_time_wt+" "+weather_tomorrow.get_status() + " "+str(tt['temp']) + "ºC")
-                        cont = cont+1
+                day = 0
+                temp_max = -99.0
+                temp_min = 99.0
+                str_forecast = ""
+                for weather_f in f:
+                    if (day != weather_f.get_reference_time('date').day):
+                        day = weather_f.get_reference_time('date').day
+                        if (str_forecast != ""):
+                            rich_text_weather.add_text(str_forecast+ " "+str(int(temp_max)) + "/"+str(int(temp_min))+"ºC")
+                        str_forecast = tools.utc_to_local(weather_f.get_reference_time(timeformat='date')).strftime('%d')
+                        temp_max = -99.0
+                        temp_min = 99.0
                 
+                    
+                    status = weather_f.get_status() 
+                    if status not in str_forecast:
+                        str_forecast = str_forecast + " " + status
+                    tt = weather_f.get_temperature(unit='celsius')
+                    if tt['temp_max'] >= temp_max:
+                       temp_max = tt['temp_max']
+                    if tt['temp_min'] <= temp_min:
+                       temp_min = tt['temp_min']
+
                 s = rich_text_weather.get_text()
                 
                 #Descargar imagen
@@ -651,7 +675,11 @@ class main_thread(QThread):
                 self.myapp.showStatus(weather.get_status())
                 
                 try:
-                    urlretrieve(url_imagen, nombre_local_imagen_1)
+                    #self.http.request.urlretrieve(url_imagen, nombre_local_imagen_1)
+                    with self.http.request('GET',url_imagen, preload_content=False) as resp, open(nombre_local_imagen_1, 'wb') as out_file:
+                        shutil.copyfileobj(resp, out_file)
+
+                    resp.release_conn()     # not 100% sure this is required though
                 except Exception as e:
                     logging.error ("Error trying to retrieve the icon weather\n"+str(e))
                     
@@ -665,31 +693,6 @@ class main_thread(QThread):
             
             self.emit(QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),s)
             
-
-        
-    def _setLed(self, state):
-        ''' Method to control the led 
-        \param state State the led (RED, GREEN, OFF)'''
-        
-        if state == "RED":
-            GPIO.output(const.PIN_LED_A,True)
-            GPIO.output(const.PIN_LED_B,False)
-        elif state == "GREEN":
-            GPIO.output(const.PIN_LED_A,False)
-            GPIO.output(const.PIN_LED_B,True)
-        else:
-            GPIO.output(const.PIN_LED_A,False)
-            GPIO.output(const.PIN_LED_B,False)
-    
-    def _getLed(self):
-        A = GPIO.input(const.PIN_LED_A)
-        B = GPIO.input(const.PIN_LED_B)
-        if A == 1 and B == 0:
-            return "RED"
-        elif A == 0 and B == 1:
-            return "GREEN"
-        else:
-            return "OFF"
             
     #   
     def _alarm_control(self):
@@ -723,8 +726,6 @@ class main_thread(QThread):
         self.status_datos['alarma']   = 1
         
         ret = self.status_log.write(**self.status_datos)
-        '''if ret == True:
-            logging.info("Status data written in json file")'''
         
     def _writeConfig(self):
         if (self.timer_config.expired() == True):
@@ -734,7 +735,27 @@ class main_thread(QThread):
             f = open ('config.pickle','wb')
             pickle.dump(config_list,f)
             f.close()
-        
+    
+    def _email_control(self):
+        if self.timer_email.expired() == True:
+            r, data = self.email.receive_domo_cmd()
+            if (r == True):
+                body = data['body']
+                if 'STATUS' in body:
+                    if self.sm_caldera != "IDLE":
+                        s='time:' + tools.segToMin(self.timer_heater_on.elapsed()) + " [m:s] ("+self.sm_caldera+")"
+                    else:
+                        s="time: 00:00 [m:s] (IDLE)"
+
+                    s += 'Sensor Temp: ' + str(self.sensor_temp) +"\n"
+                    s += 'Sensor Humidity: ' + str(self.sensor_humidity) +"\n"
+                    s += 'Mode: ' +   self.mode +"\n"
+                    s += 'Target Temp: ' + str(self.temp_target) +"\n"
+                    s += 'Heater state: ' + str(self.caldera) +"\n"
+                    s += 'Pir: ' + str(self.presence) +"\n"
+                    s += 'Alarm: '   +  "OFF" +"\n"
+                    self.email.send_email("Domo status",s)
+                    print ("Send STATUS email")
 
     def run(self):
         """ Run de main loop. 
@@ -774,6 +795,7 @@ class main_thread(QThread):
         while not self.stopped:
             '''try:'''
             #self._rx_radio_process()
+            self._email_control()
             self._temperatureControl()
             self._pirProcess()
             self._weather_process()

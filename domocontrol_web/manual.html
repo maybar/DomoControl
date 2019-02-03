@@ -38,7 +38,25 @@
                 <h2>Centralita domótica</h2>
                 <p>Bienvenidos a la página de la centralita domótica de tu casa.</p>
                 <p>Esta página permite acceder a la configuración de la centralita y al manual de usuario.</p>
-
+                <h3>Led</h3>
+                El led indica el modo de operación en que se encuentra la controlador de la caldera.
+                <h4>Apagado (Modo INACTIVO):</h4>
+                <p>La centralita está en modo Idle. La centralita se encuentra en
+                modo Idle, cuando a finalizado un ciclo de trabajo y no es necesario
+                encender la caldera por que la temperatura se encuentra por encima de
+                la temperatura objetivo.</p>
+                <h4>Destellando (Modo TRABAJO):</h4>
+                <p>En este modo el led verde destella con un ciclo de 2 segundos.</p>
+                <p>La centralita está en modo de trabajo cuando la temperatura está
+                por debajo de la temperatura objetivo y ha trascurrido mas de un
+                ciclo de trabajo desde la ultima vez que estuvo en modo de TRABAJO.
+                Cuando la centralita es conectada a la alimentación eléctrica, no
+                es necesario esperar por un ciclo de trabajo, y se pondrá en modo
+                TRABAJO si la temperatura se encuentra por debajo de la temperatura
+                objetivo.</p>
+                <h4>Continuo (Modo ESPERA):</h4>
+                <p>En este modo el led verde se matiene encendido.</p>
+                <p>La centralita está en modo de espera cuando la caldera ha estado trabajando y tiene que espera que termine el ciclo de trabajo. Al finalizar el ciclo de trabajo la caldera puede pasar a Modo inactivo o a Modo de Trabajo</p>
             </div>
         </div>
 

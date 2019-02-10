@@ -104,7 +104,13 @@ class DomoControlFrame(QtGui.QDialog):
         self.ui.btn_test.clicked.connect(self.test)
         self.mode = "APAGADO"
         self.old_bar_timer_value = 99
+        #debug
+        self.id_function = 0
+        self.watchdog_counter = 0
 
+    def set_debug_data(self, id, counter):
+        self.id_function = id
+        self.watchdog_counter = counter
 
     def show_temp_humi(self,humidity, temperature):
         ''' Show the temperature and humidity in the LCD widgets '''
@@ -198,8 +204,9 @@ class DomoControlFrame(QtGui.QDialog):
         msg.setWindowTitle("Test MessageBox")
         msg.setText("Process status: "+ST+"\n"+"PID: "+str(pid))
         #msg.setInformativeText("This is additional information")
-        
-        #msg.setDetailedText(s)
+        s = "ID Function: " +str(self.id_function)+"\n"
+        s += "Watchdog counter: "+ str(self.watchdog_counter) +"\n"
+        msg.setDetailedText(s)
  
         #msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
         #msg.buttonClicked.connect(msgbtn)
@@ -273,7 +280,7 @@ class main_thread(QThread):
                     
                 self.watchdog_counter = config_list[1]
         except Exception as e:
-            logging.critical('Error opening config file \n'+str(e))
+            logging.critical('Error opening config file'+str(e))
 
         
         #Config GPIO
@@ -310,11 +317,11 @@ class main_thread(QThread):
         self.timer_heater_on = tools.Timer(self.max_time_caldera, tools.Timer.ONE_SHOT)
         self.start_ldr_time = time.time()-self.period_ldr
         self.timer_tx = tools.Timer(const.TX_RESEND, 3) #3 times
-        self.timer_config = tools.Timer(5)     #timer to write de config data
         self.timer_pir = tools.Timer(50)
         self.timer_weather = tools.Timer(900) #update each 15 min
         self.timer_email = tools.Timer(5) #update each 1 min
-        #self.timer_one_sec = tools.Timer(1)
+        self.timer_status = tools.Timer(1)
+        self.timer_temperature = tools.Timer(1)
         #-----------------------------------------------
         
         self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp)
@@ -335,6 +342,16 @@ class main_thread(QThread):
         if not self.finished():
             self.wait()
     
+    def _save_function_id(self, id_funcion):
+        f = os.open("/var/tmp/debug.txt", os.O_CREAT|os.O_WRONLY | os.O_NONBLOCK)
+        b = str.encode(str(id_funcion))
+        os.write(f, b)
+        b = str.encode(str(self.watchdog_counter))
+        os.write(f, b)
+        os.close(f)
+        self.myapp.set_debug_data(id_funcion, self.watchdog_counter)
+        #print(id_funcion)
+        
     def _get_temp(self):
         """ 
         It reads the temperature 
@@ -389,8 +406,12 @@ class main_thread(QThread):
         self.myapp.showStatus(value)'''
         
     #   
-    def _temperatureControl(self):
+    def _temperatureControl(self, id):
         ''' Implements the control function of temperature '''
+        
+        if self.timer_temperature.expired() == False:
+            return
+        self._save_function_id(id)
         send_emomcms_data = False
         
         
@@ -400,6 +421,7 @@ class main_thread(QThread):
         
         # Calculate the target temperature -------------
         self.mode = self.myapp.getMode()
+        self._writeConfig()
         temp_target = self.temp_target 
         if self.mode == "AUTO":
             if ahora >= self.hora_start_low and ahora < self.hora_start_high :
@@ -528,6 +550,7 @@ class main_thread(QThread):
     #   
     def _pirProcess(self):
         """ Implements the movement detection function """
+        self._save_function_id(2)
         old_presence = self.presence
         old_pir_state = self.pir_state
         new_pir_state = GPIO.input(const.PIN_PIR)
@@ -582,8 +605,11 @@ class main_thread(QThread):
             GPIO.setup(const.PIN_LDR_DISCHARGE, GPIO.OUT)
             GPIO.output(const.PIN_LDR_DISCHARGE, False)
             
-    def _weather_process(self):
+    def _weather_process(self, id):
         """ Show the external weather information """
+        if (self.timer_weather.expired() == False):
+            return
+        self._save_function_id(id)
         try:
             owm = pyowm.OWM(private.OWKEY, language="es") 
         except Exception as e:
@@ -591,7 +617,7 @@ class main_thread(QThread):
             self.emit(QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),"Sin datos metereológicos!")
             return
             
-        if ((self.timer_weather.expired() == True) and (owm.is_API_online())):
+        if ( owm.is_API_online()):
             # Search for current weather in City (country)
             observation = owm.weather_at_place(self.location)
             weather = observation.get_weather()
@@ -622,16 +648,6 @@ class main_thread(QThread):
                     except:
                         logging.info ("No wind heading")
                 rich_text_weather.add_text(wind_speed + wind_deg)
-                rain = weather.get_rain() 
-                str_rain = ""
-                if (len(rain) > 0):
-                    str_rain = "Lluvia: "+str(rain['1h']) + " mm   "
-                snow = weather.get_snow() 
-                str_snow = ""
-                if (len(snow) > 0):
-                    str_snow = "Nieve: "+str(snow['1h']) + " mm"
-                if (str_rain != "") or (str_snow!=""):
-                    rich_text_weather.add_text(str_rain + str_snow)
                 sr = weather.get_sunrise_time('date')
                 str_sr = tools.utc_to_local(sr).strftime('%H:%M')
 
@@ -703,14 +719,21 @@ class main_thread(QThread):
         logging.critical ("Whoa! Watchdog expired. Holy heavens!")
         sys.exit()
         
-    def _writeData(self):
+    def _writeData(self, id):
         if self.save_history == False:
             return
+        
+        self._save_function_id(id)
         ''' Write data '''
         dataList = np.array([self.real_temp, self.sensor_temp,self.sensor_humidity, self.caldera, self.presence])
         self.data.write(dataList)
     
-    def _writeStatusData(self):
+    def _writeStatusData(self, id):
+        if (self.timer_status.expired() == False):
+            return
+        
+        self._save_function_id(id)
+        self.watchdog_counter += 1
         ''' Write status data '''
         if self.sm_caldera != "IDLE":
             self.status_datos['time']  = tools.segToMin(self.timer_heater_on.elapsed()) + " [m:s] ("+self.sm_caldera+")"
@@ -728,34 +751,34 @@ class main_thread(QThread):
         ret = self.status_log.write(**self.status_datos)
         
     def _writeConfig(self):
-        if (self.timer_config.expired() == True):
-            # Write configuration
-            self.watchdog_counter += 1
-            config_list = [self.mode,self.watchdog_counter]
-            f = open ('config.pickle','wb')
-            pickle.dump(config_list,f)
-            f.close()
+        # Write configuration
+        config_list = [self.mode]
+        f = open ('config.pickle','wb')
+        pickle.dump(config_list,f)
+        f.close()
     
-    def _email_control(self):
-        if self.timer_email.expired() == True:
-            r, data = self.email.receive_domo_cmd()
-            if (r == True):
-                body = data['body']
-                if 'STATUS' in body:
-                    if self.sm_caldera != "IDLE":
-                        s='time:' + tools.segToMin(self.timer_heater_on.elapsed()) + " [m:s] ("+self.sm_caldera+")"
-                    else:
-                        s="time: 00:00 [m:s] (IDLE)"
+    def _email_control(self, id):
+        if self.timer_email.expired() == False:
+            return
+        self._save_function_id(id)
+        r, data = self.email.receive_domo_cmd()
+        if (r == True):
+            body = data['body']
+            if 'STATUS' in body:
+                if self.sm_caldera != "IDLE":
+                    s='time:' + tools.segToMin(self.timer_heater_on.elapsed()) + " [m:s] ("+self.sm_caldera+")"
+                else:
+                    s="time: 00:00 [m:s] (IDLE)"
 
-                    s += 'Sensor Temp: ' + str(self.sensor_temp) +"\n"
-                    s += 'Sensor Humidity: ' + str(self.sensor_humidity) +"\n"
-                    s += 'Mode: ' +   self.mode +"\n"
-                    s += 'Target Temp: ' + str(self.temp_target) +"\n"
-                    s += 'Heater state: ' + str(self.caldera) +"\n"
-                    s += 'Pir: ' + str(self.presence) +"\n"
-                    s += 'Alarm: '   +  "OFF" +"\n"
-                    self.email.send_email("Domo status",s)
-                    print ("Send STATUS email")
+                s += 'Sensor Temp: ' + str(self.sensor_temp) +"\n"
+                s += 'Sensor Humidity: ' + str(self.sensor_humidity) +"\n"
+                s += 'Mode: ' +   self.mode +"\n"
+                s += 'Target Temp: ' + str(self.temp_target) +"\n"
+                s += 'Heater state: ' + str(self.caldera) +"\n"
+                s += 'Pir: ' + str(self.presence) +"\n"
+                s += 'Alarm: '   +  "OFF" +"\n"
+                self.email.send_email("Domo status",s)
+                print ("Send STATUS email")
 
     def run(self):
         """ Run de main loop. 
@@ -794,17 +817,16 @@ class main_thread(QThread):
         self.connect(self, QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),self._updateWeatherText)
         while not self.stopped:
             '''try:'''
-            #self._rx_radio_process()
-            self._email_control()
-            self._temperatureControl()
-            self._pirProcess()
-            self._weather_process()
-            #self._lightProcess()
-            #self._alarm_control()
-##              watchdog.reset()
-            self._writeData()
-            self._writeStatusData()
-            self._writeConfig()
+            #self._rx_radio_process(0)
+            self._email_control(1)
+            self._temperatureControl(2)
+            #self._pirProcess(3)
+            self._weather_process(4)
+            #self._lightProcess(5)
+            #self._alarm_control(6)
+##              watchdog.reset(7)
+            self._writeData(8)
+            self._writeStatusData(9)
             time.sleep(0.5)
             QApplication.sendPostedEvents()    #to avoid freze the screen
             '''except:

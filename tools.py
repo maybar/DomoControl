@@ -146,7 +146,7 @@ class Watchdog:
   
 class DataLog:
     def __init__(self, header):  # name of the file
-        self.file = open("log/DataLog-"+datetime.datetime.now().strftime("%Y-%m-%d %H:%M")+".csv", "w")
+        self.file = open("/var/tmp/DataLog-"+datetime.datetime.now().strftime("%Y-%m-%d %H:%M")+".csv", "w")
         self.file.write(header+'\n')
         self.old_data = np.array([0,0,0,0,0])
 
@@ -169,7 +169,7 @@ class StatusLog:
     def write(self, **data):
         ret = False
         if json.dumps(data) != json.dumps(self.old_data):
-            with open('log/status.json', 'w') as file:
+            with open('/var/tmp/status.json', 'w') as file:
                 json.dump(data, file)
             
             self.old_data = data

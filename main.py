@@ -30,6 +30,10 @@ import psutil
 import pytz
 import private_data as private
 import shutil
+from btlewrap import available_backends, BluepyBackend, GatttoolBackend, PygattBackend
+from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, \
+    MI_TEMPERATURE, MI_HUMIDITY, MI_BATTERY
+    
 
 class DomoControlFrame(QtGui.QDialog):
     """This class docstring shows how to use sphinx and rst syntax
@@ -268,17 +272,18 @@ class main_thread(QThread):
             with open ('config.pickle','rb') as f:
                 config_list = pickle.load(f)
                 f.close()
-                self.mode = config_list[0]
-                if config_list[0] == "AUTO":
-                    self.myapp.modeAuto()
-                elif config_list[0] == "T.ALTA":
-                    self.myapp.modeAlta()
-                elif config_list[0] == "T.BAJA":
-                    self.myapp.modeBaja()
-                else:
-                    self.myapp.modeApagado()
-                    
-                self.watchdog_counter = config_list[1]
+                if len(config_list) > 0:
+                    self.mode = config_list[0]
+                    if config_list[0] == "AUTO":
+                        self.myapp.modeAuto()
+                    elif config_list[0] == "T.ALTA":
+                        self.myapp.modeAlta()
+                    elif config_list[0] == "T.BAJA":
+                        self.myapp.modeBaja()
+                    else:
+                        self.myapp.modeApagado()
+                if len(config_list) > 1:    
+                    self.watchdog_counter = config_list[1]
         except Exception as e:
             logging.critical('Error opening config file'+str(e))
 
@@ -294,6 +299,7 @@ class main_thread(QThread):
         GPIO.setup(const.PIN_LDR_CHARGE,GPIO.IN)
         GPIO.setup(const.PIN_LDR_DISCHARGE, GPIO.IN) 
         GPIO.setup(const.PIN_SENSOR_TEMP, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
+        GPIO.setup(const.PIN_WATCHDOG,GPIO.OUT)
         #-------------------------------------------
         
         self.data = tools.DataLog("Tiempo,T.Real,T.Sensor,T.Humedad,Caldera, Presence")
@@ -322,6 +328,8 @@ class main_thread(QThread):
         self.timer_email = tools.Timer(5) #update each 1 min
         self.timer_status = tools.Timer(1)
         self.timer_temperature = tools.Timer(1)
+        self.time_mi_data = tools.Timer(60)  #periodo de letura de los sensores Xiaomi
+        self.time_watchdog = tools.Timer(1)
         #-----------------------------------------------
         
         self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp)
@@ -334,6 +342,8 @@ class main_thread(QThread):
         #Init RADIO Com
         self.pi = pigpio.pi()
         self.radio_tx = piVirtualWire.tx(self.pi, const.PIN_TX, 2000) 
+        
+        self.poller = MiTempBtPoller("4c:65:a8:dd:c0:11", BluepyBackend)
 
         
     def __del__(self):
@@ -539,18 +549,18 @@ class main_thread(QThread):
                 logging.error("Tx Error sending")
                 
         #---------------------------------------------------
-        if send_emomcms_data == True:
+        '''if send_emomcms_data == True:
             var_data = '"temp":'+str(self.sensor_temp) + "," + '"hum":'+str(self.sensor_humidity) + ","
             if self.caldera == True:
                 var_data += '"heat":10'
             else:
                 var_data += '"heat":0'
-            self._putEmoncmsData(0,var_data)
+            self._putEmoncmsData(0,var_data)'''
             
     #   
-    def _pirProcess(self):
+    def _pirProcess(self, id):
         """ Implements the movement detection function """
-        self._save_function_id(2)
+        self._save_function_id(id)
         old_presence = self.presence
         old_pir_state = self.pir_state
         new_pir_state = GPIO.input(const.PIN_PIR)
@@ -715,9 +725,9 @@ class main_thread(QThread):
         # Implements the alarm function
         return
     
-    def _watchdogHandler(self):
+    '''def _watchdogHandler(self):
         logging.critical ("Whoa! Watchdog expired. Holy heavens!")
-        sys.exit()
+        sys.exit()'''
         
     def _writeData(self, id):
         if self.save_history == False:
@@ -761,7 +771,12 @@ class main_thread(QThread):
         if self.timer_email.expired() == False:
             return
         self._save_function_id(id)
-        r, data = self.email.receive_domo_cmd()
+        r = False
+        try:
+            r, data = self.email.receive_domo_cmd()
+        except Exception as e:
+            logging.error("Error self.email.receive_domo_cmd"+str(e))
+            
         if (r == True):
             body = data['body']
             if 'STATUS' in body:
@@ -780,6 +795,26 @@ class main_thread(QThread):
                 self.email.send_email("Domo status",s)
                 print ("Send STATUS email")
 
+    def _get_mi_data(self, id):
+        if self.time_mi_data.expired() == False:
+            return 
+        
+        self._save_function_id(id)
+        print ("leyendo xiaomi...")
+        t = self.poller.parameter_value(MI_TEMPERATURE)
+        h = self.poller.parameter_value(MI_HUMIDITY)
+        print("Temperature: {}".format(t))
+        print("Humedad: {}".format(h))
+          
+    def _watchdog_process(self):
+        if self.time_watchdog.expired():
+            if GPIO.input(const.PIN_WATCHDOG):
+                GPIO.output(const.PIN_WATCHDOG, False)
+            else:
+                GPIO.output(const.PIN_WATCHDOG, True)
+                
+    
+    
     def run(self):
         """ Run de main loop. 
         
@@ -815,6 +850,8 @@ class main_thread(QThread):
         self.connect(self, QtCore.SIGNAL("_updateBarTimer(int)"),self._updateBarTimer)
         self.connect(self, QtCore.SIGNAL("_updateHeatterWidget(int)"),self._updateHeatterWidget)
         self.connect(self, QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),self._updateWeatherText)
+        print ("Entering in main loop")
+        logging.debug ("Entering in main loop")
         while not self.stopped:
             '''try:'''
             #self._rx_radio_process(0)
@@ -827,6 +864,8 @@ class main_thread(QThread):
 ##              watchdog.reset(7)
             self._writeData(8)
             self._writeStatusData(9)
+            #self._get_mi_data(10)              #lee sensores xiaomi
+            self._watchdog_process()
             time.sleep(0.5)
             QApplication.sendPostedEvents()    #to avoid freze the screen
             '''except:
@@ -846,13 +885,45 @@ class main_thread(QThread):
         self.stopped is set.
         """
         self.stopped = 1
+        print ("Command to stop the Thread")
+        logging.debug ("Command to stop the Thread")
+        
+def check_if_process_exist():
+    list_pid = psutil.pids()
+    found = False
+    count = 0
+    for pid in list_pid:
+        try:
+            process = psutil.Process(pid)
+            #print ("Nombre:",p.name(),"EXE:",p.exe(),"CWD:",p.cwd(),"CL:",p.cmdline(   ),"ST:",p.status())
+            CL = process.cmdline()
+            ST = process.status()
+            for word in CL:
+                if '/DomoControl/main.py' in word:
+                    count+=1
+                    if count == 2:
+                        print ("main.py is already running! Status: "+ ST+ " PID: "+ str(last_pid))
+                        logging.debug ("main.py is already running! Status: "+ ST+ " PID: "+ str(last_pid))
+                        found = True
+                        break
+                    last_pid = pid
+                
+        except (psutil.ZombieProcess, psutil.AccessDenied, psutil.NoSuchProcess):
+            print ("except checking main process")
+            loging.debug("except checking main process")
+        if found == True:
+            break
+    return found
 
 def main():
     """ Main  function
-    
     Raises:
         KeyboardInterrupt
     """
+    
+    if check_if_process_exist() == True:
+        sys.exit(0)
+        
     logging.info("MAIN Function")
     app = QtGui.QApplication(sys.argv)
     myapp = DomoControlFrame()
@@ -864,25 +935,25 @@ def main():
         mainThread = main_thread(myapp)
         mainThread.start()
     except KeyboardInterrupt:
-          logging.info("KeyboardInterrupt")  
-##        except:
-##            print ("Error starting the Main thread")
+        logging.debug("KeyboardInterrupt") 
+    except Exception as e:
+        logging.error("Error starting the Main thread. Error: " + str(e))
 
     
     try:
         sys.exit(app.exec_())
     except Exception as e:
-        logging.info("except app.exec\n"+str(e))
+        logging.debug("except app.exec\n"+str(e))
         GPIO.cleanup() # this ensures a clean exit 
     finally:  
-        #GPIO.cleanup() # this ensures a clean exit  
+        GPIO.cleanup() # this ensures a clean exit  
         mainThread.stop()
-        logging.info("finally app.exec")
+        logging.debug("finally app.exec")
 
 
 if __name__ == "__main__":
     """ Enter point """
-    logging.basicConfig(filename=os.getcwd() +'/log/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.WARNING)
+    logging.basicConfig(filename='/var/tmp/main.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
     #logging.basicConfig(format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
     
     

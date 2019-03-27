@@ -16,5 +16,4 @@ cd /home/pi/Documents/PhytonFiles/DomoControl
 /usr/bin/python3 /home/pi/Documents/PhytonFiles/DomoControl/supervisor.py &
 
 
-./main.sh &
 

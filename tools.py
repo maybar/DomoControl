@@ -236,6 +236,7 @@ class Timer:
 class LedDualColor:
     
     def __init__(self, PinA, PinB): 
+        GPIO.setmode(GPIO.BCM)
         self.pin_a = PinA
         self.pin_b = PinB
         GPIO.setup(PinA,GPIO.OUT)
@@ -282,10 +283,13 @@ import email
 
 class Email:
     def __init__(self, private):
-        self.private = private
-        self.mail = imaplib.IMAP4_SSL(self.private.SMTP_SERVER)
-        self.mail.login(self.private.FROM_EMAIL,self.private.FROM_PWD)
-        self.mail.select('inbox')
+        try:
+            self.private = private
+            self.mail = imaplib.IMAP4_SSL(self.private.SMTP_SERVER)
+            self.mail.login(self.private.FROM_EMAIL,self.private.FROM_PWD)
+            self.mail.select('inbox')
+        except Exception as e:
+            print ("Tools.Email. Error constructor. "+str(e))
         
     def send_email(self, subject, body):
         msg = MIMEMultipart()
@@ -365,7 +369,11 @@ class Email:
         print(data_list)
         
     def receive_domo_cmd(self):
-        self.mail.select('inbox')
+        try:
+            self.mail.select('inbox')
+        except Exception as e:
+            print ("Error in mail.select: "+str(e))
+            
         status, response = self.mail.uid('search', None, 'UNSEEN SUBJECT "DOMO-CMD"')
         if status == 'OK':
             unread_msg_nums = response[0].split()

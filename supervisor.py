@@ -1,11 +1,9 @@
 import psutil
 import time
 import tools
-import private_data as private
 import datetime
-import pickle
-import fcntl
-import os, sys
+import sys
+import os
 import RPi.GPIO as GPIO
 import logging
         
@@ -13,35 +11,62 @@ import logging
 def start_app():
     process = psutil.Popen("/home/pi/Documents/PhytonFiles/DomoControl/main.sh")
     if process is not None:
-        print("main.sh First start by supervisor ! pid={}".format(process.pid))
-        logging.debug("main.sh First start by supervisor")
+        # print("main.sh Start by supervisor ! pid={}".format(process.pid))
+        logging.debug("main.sh Start by supervisor ! pid=" + str(process.pid))
         time.sleep(5)
         return True
     else:
-        print("main.sh First start fail ! ")
-        logging.debug("main.sh First start fail !")
+        print("main.sh Start fail ! ")
+        logging.debug("main.sh Start fail !")
         return False
     
-try:
-    fp = open("/var/lock/supervisor.lock", 'w')
-except:
+    
+
+def check_if_process_name_exist(name_process, num):
+    list_pid = psutil.pids()
+    found = False
+    count = 0
+    last_pid = 0
+    for pid in list_pid:
+        try:
+            process = psutil.Process(pid)
+            #print ("Nombre:",p.name(),"EXE:",p.exe(),"CWD:",p.cwd(),"CL:",p.cmdline(   ),"ST:",p.status())
+            #print ("CL:",process.cmdline(   ))
+            CL = process.cmdline()
+            for word in CL:
+                if name_process in word:
+                    count+=1
+                    if count == num:
+                        print ("SUP> " + name_process+ " is running! Status: PID: "+ str(last_pid))
+                        logging.debug (name_process+ "is running! Status: PID: "+ str(last_pid))
+                        found = True
+                        break
+                    last_pid = pid
+        except (psutil.ZombieProcess, psutil.AccessDenied, psutil.NoSuchProcess):
+            print ("except checking process "+ name_process)
+            logging.debug("except checking process "+ name_process)
+        if found == True:
+            break
+    return found, pid  
+
+    
+print("******** SUPERVISOR.PY ************")
+if check_if_process_name_exist('supervisor.py', 2)[0] == True:
     print ("Supervisor.py is already running. Exit now!")
     sys.exit(0)
         
-        
-print("******** SUPERVISOR.PY ************")
 state = "IDLE"
 print ("Supervisor>> IDLE")
 pid = 0
 process = psutil.Process()
 watchdog_pin = False
 error_counter = 0
-email_enabled = False
+'''email_enabled = False
 try:
     correo = tools.Email(private)
     email_enabled = True
 except Exception as e:
-    print ("Supervisor. Error openning email"+str(e))
+    print ("Supervisor. Error openning email"+str(e))'''
     
 LedCtrl = tools.LedDualColor(6, 5)
 restart_counter = 0
@@ -52,7 +77,7 @@ count_no_app =0
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(17,GPIO.OUT)
 logging.basicConfig(filename='/var/tmp/supervisor.log',format='%(levelname)s:%(asctime)s %(message)s', datefmt='%d/%m %H:%M:%S', level=logging.DEBUG)
-
+cont_try = 0
 
 # try to start the main application
 while start_app() == False:
@@ -61,45 +86,35 @@ while start_app() == False:
 while(1):
     if state == "IDLE":
         #check if the app is running the first time
-        list_pid = psutil.pids()
-        found = False
         LedCtrl.toggle('RED')
-        for pid in list_pid:
-            try:
-                process = psutil.Process(pid)
-                #print ("Nombre:",p.name(),"EXE:",p.exe(),"CWD:",p.cwd(),"CL:",p.cmdline(   ),"ST:",p.status())
-                CL = process.cmdline()
-                ST = process.status()
-                for word in CL:
-                    if 'main.py' in word:
-                        print ("IDLE>>RUNNING")
-                        state = "RUNNING"
-                        found = True
-                        str_detail += "Time: "+str(datetime.datetime.now()) +" IDLE>>RUNNING "+ " Status: "+ ST+ " PID: "+ str(pid)+"\n"
-                        LedCtrl.setState('OFF')
-                        logging.debug("IDLE>>RUNNING")
-                        error_counter = 0
-                        break
-                    
-            except (psutil.ZombieProcess, psutil.AccessDenied, psutil.NoSuchProcess):
-                print ("IDLE except checking main process")
-            if found == True:
-                count_no_app = 0
-                break
-        if found == False:
+        found, pid = check_if_process_name_exist('main.py', 1)
+        if found == True:
+            print ("IDLE>>RUNNING")
+            str_detail += "Time: "+str(datetime.datetime.now()) +" IDLE>>RUNNING "+ " PID: "+ str(pid)+"\n"
+            state = "RUNNING"
+            LedCtrl.setState('OFF')
+            logging.debug("IDLE>>RUNNING")
+            error_counter = 0
+            count_no_app = 0
+            cont_try = 0
+        else:
             count_no_app+=1
             if count_no_app >= 20:
-                start_app()
+                # start_app()
+                os.system('/home/pi/Documents/PhytonFiles/DomoControl/main.sh')
+                time.sleep(10)
                 count_no_app = 0
-            
-                    
+                cont_try += 1
+                # if cont_try == 5:
+                #     os.system('reboot')
+                               
         
     elif state == "RUNNING":
         #check if the application is running
         # Check watchdog couter
         error_counter +=1
         try:
-            ret = GPIO.input(17)    #watchdog pin
+            ret = GPIO.input(17)    # watchdog pin
             if watchdog_pin != ret:
                 error_counter = 0
             if error_counter == 15:
@@ -129,8 +144,8 @@ while(1):
         if process is not None:
             print("main.sh restarted ! pid={}".format(process.pid))
             str_detail += "Time: "+str(datetime.datetime.now()) +" STOPPED "+ "main.sh restarted ! pid={}\n".format(process.pid)
-            if email_enabled:
-                correo.send_email("Supervisor report","Detail: \n"+str_detail)
+            '''if email_enabled:
+                correo.send_email("Supervisor report","Detail: \n"+str_detail)'''
             time.sleep(5)
             pid = process.pid
             state = "IDLE"

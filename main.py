@@ -24,10 +24,10 @@ from PyQt4.QtGui import QApplication, QMessageBox
 
 import logging
 import pyowm    #Open weather
-from pyowm import timeutils
+#from pyowm import timeutils
 import constants as const
 import psutil
-import pytz
+#import pytz
 import private_data as private
 import shutil
 from btlewrap import available_backends, BluepyBackend, GatttoolBackend, PygattBackend
@@ -626,8 +626,17 @@ class main_thread(QThread):
             logging.error ("Error trying to connect to OWM\n"+str(e))
             self.emit(QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),"Sin datos metereológicos!")
             return
+        
+        own_on_line = False
+        try:
+            own_on_line = owm.is_API_online()
+        except Exception as e:
+            logging.error ("Error trying to determine if to OWM is online\n"+str(e))
+            self.emit(QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),"Sin datos metereológicos!")
+            return
             
-        if ( owm.is_API_online()):
+        
+        if ( own_on_line):
             # Search for current weather in City (country)
             observation = owm.weather_at_place(self.location)
             weather = observation.get_weather()
@@ -892,6 +901,7 @@ def check_if_process_exist():
     list_pid = psutil.pids()
     found = False
     count = 0
+    last_pid = 0
     for pid in list_pid:
         try:
             process = psutil.Process(pid)
@@ -910,7 +920,7 @@ def check_if_process_exist():
                 
         except (psutil.ZombieProcess, psutil.AccessDenied, psutil.NoSuchProcess):
             print ("except checking main process")
-            loging.debug("except checking main process")
+            logging.debug("except checking main process")
         if found == True:
             break
     return found
@@ -925,30 +935,46 @@ def main():
         sys.exit(0)
         
     logging.info("MAIN Function")
-    app = QtGui.QApplication(sys.argv)
-    myapp = DomoControlFrame()
-    myapp.showFullScreen()
-    #myapp.show()
+    try:
+        app = QtGui.QApplication(sys.argv)
+        logging.info("QApplication started")
+    except Exception as e:
+        print("Error 1")
+        logging.error("Error creating Application. Error: " + str(e))
+    
+    try:
+        myapp = DomoControlFrame()
+        myapp.showFullScreen()
+        logging.info("GUI shown")
+        #myapp.show()
+    except Exception as e:
+        print("Error 2")
+        logging.error("Error creating GUI. Error: " + str(e))
     
     ''' Main Loop '''
     try:    
         mainThread = main_thread(myapp)
         mainThread.start()
+        logging.info("main thread started")
     except KeyboardInterrupt:
-        logging.debug("KeyboardInterrupt") 
+        print("Error 3")
+        logging.info("KeyboardInterrupt") 
     except Exception as e:
+        print("Error 4")
         logging.error("Error starting the Main thread. Error: " + str(e))
 
     
     try:
         sys.exit(app.exec_())
     except Exception as e:
-        logging.debug("except app.exec\n"+str(e))
+        logging.error("except app.exec\n"+str(e))
+        print("Error 5")
         GPIO.cleanup() # this ensures a clean exit 
     finally:  
         GPIO.cleanup() # this ensures a clean exit  
         mainThread.stop()
-        logging.debug("finally app.exec")
+        print("finally app.exec")
+        logging.info("finally app.exec")
 
 
 if __name__ == "__main__":

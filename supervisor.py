@@ -47,7 +47,7 @@ def check_if_process_name_exist(name_process, num):
             logging.debug("except checking process "+ name_process)
         if found == True:
             break
-    return found, pid  
+    return found, pid, process  
 
     
 print("******** SUPERVISOR.PY ************")
@@ -58,9 +58,9 @@ if check_if_process_name_exist('supervisor.py', 2)[0] == True:
 state = "IDLE"
 print ("Supervisor>> IDLE")
 pid = 0
-process = psutil.Process()
 watchdog_pin = False
 error_counter = 0
+timeout = 30        # sec
 '''email_enabled = False
 try:
     correo = tools.Email(private)
@@ -87,7 +87,7 @@ while(1):
     if state == "IDLE":
         #check if the app is running the first time
         LedCtrl.toggle('RED')
-        found, pid = check_if_process_name_exist('main.py', 1)
+        found, pid, process = check_if_process_name_exist('main.py', 1)
         if found == True:
             print ("IDLE>>RUNNING")
             str_detail += "Time: "+str(datetime.datetime.now()) +" IDLE>>RUNNING "+ " PID: "+ str(pid)+"\n"
@@ -99,7 +99,7 @@ while(1):
             cont_try = 0
         else:
             count_no_app+=1
-            if count_no_app >= 20:
+            if count_no_app >= timeout:
                 # start_app()
                 os.system('/home/pi/Documents/PhytonFiles/DomoControl/main.sh')
                 time.sleep(10)
@@ -117,9 +117,9 @@ while(1):
             ret = GPIO.input(17)    # watchdog pin
             if watchdog_pin != ret:
                 error_counter = 0
-            if error_counter == 15:
+            if error_counter == timeout:
                 state = "STOPPED"
-                str_detail += "Time: "+str(datetime.datetime.now()) +" RUNNING>>STOPPED "+ "Status: "+ ST+ " PID: "+ str(pid)+ " Reason:(watchdog is blocked)\n"
+                str_detail += "Time: "+str(datetime.datetime.now()) +" RUNNING>>STOPPED  PID: "+ str(pid)+ " Reason:(watchdog is blocked)\n"
                 print ("RUNNING>>STOPPED: Reason:(watchdog is blocked)")
                 logging.debug("RUNNING>>STOPPED: Reason:(watchdog is blocked)")
                 LedCtrl.setState('RED')
@@ -128,14 +128,14 @@ while(1):
             print ("Supervisor: Error checking hw watchdog. Error: "+str(e))
         
     elif state == "STOPPED":
-        if error_counter == 15:
+        if error_counter == timeout:
             try:
                 process.terminate()
                 time.sleep(3)
                 process.kill()
             except:
                 print ("except terminating process")
-                str_detail += "Time: "+str(datetime.datetime.now()) +" STOPPED "+ "Status: "+ ST+ " PID: "+ str(pid)+ " Reason:(Error stoping process)\n"
+                str_detail += "Time: "+str(datetime.datetime.now()) +" STOPPED PID: "+ str(pid)+ " Reason:(Error stopping process)\n"
                 
             
         #try to start again

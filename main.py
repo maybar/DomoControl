@@ -264,6 +264,7 @@ class main_thread(QThread):
         self.max_time_caldera = 10*60     #10 min max time the caldera can be active
         self.location = "Usurbil,ES"
         self.cond_protection = True
+        self.heater_protection = False
         self.save_history = False
         self.email = tools.Email(private)
         self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',ca_certs=certifi.where())
@@ -414,6 +415,44 @@ class main_thread(QThread):
     '''def _updateWeatherStatusText(self,value):
         """ Update the dialog GUI for the current Weather status"""
         self.myapp.showStatus(value)'''
+    
+    def _caldera_protection(self):
+        if not self.heater_protection:
+            return True
+        
+        caldera_enable = True
+        if self.sm_caldera == "IDLE":
+            if self.caldera == True:
+                self.timer_heater_on.restart()
+                self.timer_cycle_caldera.restart()
+                self.sm_caldera = "WORKING"
+                self.led.setState('OFF')
+        elif self.sm_caldera == "WORKING":
+            time_heater_on = self.timer_heater_on.elapsed()
+            self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
+            self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(time_heater_on))
+            if self.timer_heater_on.expired() == True: 
+                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(self.max_time_caldera))
+                self.sm_caldera = "WAITING"
+                #print ("Temporizador1 expiró. Espera")
+            if self.caldera == False:
+                self.sm_caldera = "WAITING"
+                #print ("Caldera se apagó. Espera")
+            self.led.toggle('GREEN')
+            
+        elif self.sm_caldera == "WAITING": 
+            self.led.setState('GREEN')
+            caldera_enable = False
+            self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder()))) 
+            if self.timer_cycle_caldera.expired() == True:
+                self.myapp.ui.label_arm.setText("Sistema preparado")
+                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(0)) 
+                self.sm_caldera = "IDLE"
+        else:
+            pass
+        
+        #print (self.sm_caldera)
+        return caldera_enable
         
     #   
     def _temperatureControl(self, id):
@@ -423,8 +462,7 @@ class main_thread(QThread):
             return
         self._save_function_id(id)
         send_emomcms_data = False
-        
-        
+               
         ahora_tmp = datetime.datetime.now()
         ahora = datetime.time(ahora_tmp.hour,ahora_tmp.minute,ahora_tmp.second)
         self.myapp.setTime(str(ahora))
@@ -464,39 +502,7 @@ class main_thread(QThread):
         
           
         # State machine protection of heater -----------------------
-        caldera_enable = True
-        if self.sm_caldera == "IDLE":
-            if self.caldera == True:
-                self.timer_heater_on.restart()
-                self.timer_cycle_caldera.restart()
-                self.sm_caldera = "WORKING"
-                self.led.setState('OFF')
-        elif self.sm_caldera == "WORKING":
-            time_heater_on = self.timer_heater_on.elapsed()
-            self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
-            self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(time_heater_on))
-            if self.timer_heater_on.expired() == True: 
-                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(self.max_time_caldera))
-                self.sm_caldera = "WAITING"
-                #print ("Temporizador1 expiró. Espera")
-            if self.caldera == False:
-                self.sm_caldera = "WAITING"
-                #print ("Caldera se apagó. Espera")
-            self.led.toggle('GREEN')
-            
-        elif self.sm_caldera == "WAITING": 
-            self.led.setState('GREEN')
-            caldera_enable = False
-            self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder()))) 
-            if self.timer_cycle_caldera.expired() == True:
-                self.myapp.ui.label_arm.setText("Sistema preparado")
-                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(0)) 
-                self.sm_caldera = "IDLE"
-        else:
-            pass
-        
-        #print (self.sm_caldera)
-                 
+        caldera_enable = self._caldera_protection()
           
         # -----------------------------------------------------
         
@@ -504,15 +510,11 @@ class main_thread(QThread):
         if self.timer_sensor.expired():
             #current_led_state = self._getLed()
             self.led.setState('GREEN')
-            old_temp=self.sensor_temp
-            old_hum=self.sensor_humidity
             self._get_temp()
             # Write log on internet
             send_emomcms_data = True
             self.led.setState('OFF')
-                
-                
-            
+                      
          
         # Take decition to start the heater ------------------------------------------------------
         old_caldera = self.caldera
@@ -699,9 +701,9 @@ class main_thread(QThread):
                         str_forecast = str_forecast + " " + status
                     tt = weather_f.get_temperature(unit='celsius')
                     if tt['temp_max'] >= temp_max:
-                       temp_max = tt['temp_max']
+                        temp_max = tt['temp_max']
                     if tt['temp_min'] <= temp_min:
-                       temp_min = tt['temp_min']
+                        temp_min = tt['temp_min']
 
                 s = rich_text_weather.get_text()
                 

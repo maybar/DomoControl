@@ -31,9 +31,6 @@ import psutil
 #import pytz
 import private_data as private
 import shutil
-from btlewrap import available_backends, BluepyBackend, GatttoolBackend, PygattBackend
-from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, \
-    MI_TEMPERATURE, MI_HUMIDITY, MI_BATTERY
     
 
 
@@ -163,7 +160,7 @@ class main_thread(QThread):
         self.pi = pigpio.pi()
         self.radio_tx = piVirtualWire.tx(self.pi, const.PIN_TX, 2000) 
         
-        self.poller = MiTempBtPoller("4c:65:a8:dd:c0:11", BluepyBackend)
+        #self.poller = MiTempBtPoller("4c:65:a8:dd:c0:11", BluepyBackend)
 
         
     def __del__(self):
@@ -274,12 +271,12 @@ class main_thread(QThread):
         return caldera_enable
         
     #   
-    def _temperatureControl(self, id):
+    def _temperatureControl(self, _id):
         ''' Implements the control function of temperature '''
         
         if self.timer_temperature.expired() == False:
             return
-        self._save_function_id(id)
+        self._save_function_id(_id)
         send_emomcms_data = False
                
         ahora_tmp = datetime.datetime.now()
@@ -331,7 +328,7 @@ class main_thread(QThread):
             self.led.setState('GREEN')
             self._get_temp()
             # Write log on internet
-            send_emomcms_data = True
+            send_emomcms_data = False   #No send data
             self.led.setState('OFF')
                       
          
@@ -350,7 +347,7 @@ class main_thread(QThread):
         if old_caldera != self.caldera:
             self.timer_tx.restart()
             self.emit(QtCore.SIGNAL("_updateHeatterWidget(int)"),self.caldera)
-            send_emomcms_data = True
+            send_emomcms_data = False   # No send data
         #-----------------------------------------------------
         
         # The command is periodically transmitted by the Radio
@@ -370,18 +367,18 @@ class main_thread(QThread):
                 logging.error("Tx Error sending")
                 
         #---------------------------------------------------
-        '''if send_emomcms_data == True:
+        if send_emomcms_data == True:
             var_data = '"temp":'+str(self.sensor_temp) + "," + '"hum":'+str(self.sensor_humidity) + ","
             if self.caldera == True:
                 var_data += '"heat":10'
             else:
                 var_data += '"heat":0'
-            self._putEmoncmsData(0,var_data)'''
+            self._putEmoncmsData(0,var_data)
             
     #   
-    def _pirProcess(self, id):
+    def _pirProcess(self, _id):
         """ Implements the movement detection function """
-        self._save_function_id(id)
+        self._save_function_id(_id)
         old_presence = self.presence
         old_pir_state = self.pir_state
         new_pir_state = GPIO.input(const.PIN_PIR)
@@ -403,7 +400,7 @@ class main_thread(QThread):
         self.pir_state =  new_pir_state; 
         return
     
-    def _putEmoncmsData(self, id, var_data):
+    def _putEmoncmsData(self, _id, var_data):
         ''' Send the data to Emoncms web server '''
         s = 'https://emoncms.org/input/post?node='+str(id)+'&fulljson={'+var_data+'}&apikey=9771b32a0de292aabb7f01cfdcad146b'
         #print("EmoncmsData: "+s)
@@ -436,11 +433,11 @@ class main_thread(QThread):
             GPIO.setup(const.PIN_LDR_DISCHARGE, GPIO.OUT)
             GPIO.output(const.PIN_LDR_DISCHARGE, False)
             
-    def _weather_process(self, id):
+    def _weather_process(self, _id):
         """ Show the external weather information """
         if (self.timer_weather.expired() == False):
             return
-        self._save_function_id(id)
+        self._save_function_id(_id)
         try:
             owm = pyowm.OWM(private.OWKEY, language="es") 
         except Exception as e:
@@ -559,16 +556,16 @@ class main_thread(QThread):
         logging.critical ("Whoa! Watchdog expired. Holy heavens!")
         sys.exit()'''
         
-    def _writeData(self, id):
+    def _writeData(self, _id):
         if self.save_history == False:
             return
         
-        self._save_function_id(id)
+        self._save_function_id(_id)
         ''' Write data '''
         dataList = np.array([self.real_temp, self.sensor_temp,self.sensor_humidity, self.caldera, self.presence])
         self.data.write(dataList)
     
-    def _writeStatusData(self, id):
+    def _writeStatusData(self, _id):
         if (self.timer_status.expired() == False):
             return
         
@@ -588,7 +585,7 @@ class main_thread(QThread):
         self.status_datos['pir']   = self.presence
         self.status_datos['alarma']   = 1
         
-        ret = self.status_log.write(**self.status_datos)
+        self.status_log.write(**self.status_datos)
         
     def _writeConfig(self):
         # Write configuration
@@ -597,10 +594,10 @@ class main_thread(QThread):
         pickle.dump(config_list,f)
         f.close()
     
-    def _email_control(self, id):
+    def _email_control(self, _id):
         if self.timer_email.expired() == False:
             return
-        self._save_function_id(id)
+        self._save_function_id(_id)
         r = False
         try:
             r, data = self.email.receive_domo_cmd()
@@ -625,16 +622,16 @@ class main_thread(QThread):
                 self.email.send_email("Domo status",s)
                 print ("Send STATUS email")
 
-    def _get_mi_data(self, id):
+    def _get_mi_data(self, _id):
         if self.time_mi_data.expired() == False:
             return 
         
-        self._save_function_id(id)
+        self._save_function_id(_id)
         print ("leyendo xiaomi...")
-        t = self.poller.parameter_value(MI_TEMPERATURE)
-        h = self.poller.parameter_value(MI_HUMIDITY)
-        print("Temperature: {}".format(t))
-        print("Humedad: {}".format(h))
+        #t = self.poller.parameter_value(MI_TEMPERATURE)
+        #h = self.poller.parameter_value(MI_HUMIDITY)
+        #print("Temperature: {}".format(t))
+        #print("Humedad: {}".format(h))
           
     def _watchdog_process(self):
         if self.time_watchdog.expired():

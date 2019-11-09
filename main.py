@@ -6,6 +6,7 @@ It contains: main_thread class"""
 
 import os,sys
 from domo_control_frame import DomoControlFrame
+from mi_gateway import MiGateway
 import numpy as np
 import Adafruit_DHT
 from PyQt4.QtCore import QThread, Qt
@@ -14,9 +15,9 @@ import time
 import datetime
 import certifi
 import urllib3
-import tools
+import utils.tools as tools
 #RADIO communication
-import piVirtualWire.piVirtualWire as piVirtualWire
+import utils.piVirtualWire.piVirtualWire as piVirtualWire
 import pigpio
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtGui import (QColor, QPalette)
@@ -28,7 +29,6 @@ import pyowm    #Open weather
 #from pyowm import timeutils
 import constants as const
 import psutil
-#import pytz
 import private_data as private
 import shutil
     
@@ -160,7 +160,7 @@ class main_thread(QThread):
         self.pi = pigpio.pi()
         self.radio_tx = piVirtualWire.tx(self.pi, const.PIN_TX, 2000) 
         
-        #self.poller = MiTempBtPoller("4c:65:a8:dd:c0:11", BluepyBackend)
+        self.mi_hub = MiGateway(const, logging)
 
         
     def __del__(self):
@@ -628,10 +628,14 @@ class main_thread(QThread):
         
         self._save_function_id(_id)
         print ("leyendo xiaomi...")
-        #t = self.poller.parameter_value(MI_TEMPERATURE)
-        #h = self.poller.parameter_value(MI_HUMIDITY)
-        #print("Temperature: {}".format(t))
-        #print("Humedad: {}".format(h))
+        
+        for d in const.SENSORS.items():
+            print (d)
+            break
+        data = self.mi_hub.request_current_status(d)
+        print(data)
+        
+        
           
     def _watchdog_process(self):
         if self.time_watchdog.expired():
@@ -691,7 +695,7 @@ class main_thread(QThread):
 ##              watchdog.reset(7)
             self._writeData(8)
             self._writeStatusData(9)
-            #self._get_mi_data(10)              #lee sensores xiaomi
+            self._get_mi_data(10)              #lee sensores xiaomi
             self._watchdog_process()
             time.sleep(0.5)
             QApplication.sendPostedEvents()    #to avoid freze the screen

@@ -2,7 +2,7 @@
 
 echo " ***** MAIN.SH ******* "
 sleep 1
-sudo pigpiod
-cd /home/pi/Documents/PhytonFiles/DomoControl/
-/usr/bin/python3 /home/pi/Documents/PhytonFiles/DomoControl/main.py &
+
+cd /home/pi/Scripts/DomoControl/
+/usr/bin/python3 /home/pi/Scripts/DomoControl/main.py &
 

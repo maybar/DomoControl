@@ -183,11 +183,6 @@ class Ui_MainDialog(object):
         self.btn_apagado.setCheckable(True)
         self.btn_apagado.setAutoExclusive(True)
         self.btn_apagado.setObjectName(_fromUtf8("btn_apagado"))
-        self.barHeaterTimer = QtGui.QProgressBar(MainDialog)
-        self.barHeaterTimer.setGeometry(QtCore.QRect(290, 340, 201, 23))
-        self.barHeaterTimer.setMaximum(15)
-        self.barHeaterTimer.setProperty("value", 10)
-        self.barHeaterTimer.setObjectName(_fromUtf8("barHeaterTimer"))
         self.label_arm = QtGui.QLabel(MainDialog)
         self.label_arm.setGeometry(QtCore.QRect(290, 310, 211, 20))
         self.label_arm.setObjectName(_fromUtf8("label_arm"))
@@ -251,7 +246,6 @@ class Ui_MainDialog(object):
         self.label_light.raise_()
         self.label_mensaje.raise_()
         self.label_hora.raise_()
-        self.barHeaterTimer.raise_()
         self.label_arm.raise_()
         self.text_weather.raise_()
         self.icon_condition.raise_()
@@ -274,7 +268,6 @@ class Ui_MainDialog(object):
         self.label_light.setText(_translate("MainDialog", "Iluminación: 70%", None))
         self.label_mensaje.setText(_translate("MainDialog", "OK", None))
         self.label_hora.setText(_translate("MainDialog", "00:00:00", None))
-        self.barHeaterTimer.setFormat(_translate("MainDialog", "%p%", None))
         self.label_arm.setText(_translate("MainDialog", "Caldera disarm", None))
         self.text_weather.setHtml(_translate("MainDialog", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"

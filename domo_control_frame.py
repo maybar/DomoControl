@@ -138,20 +138,6 @@ class DomoControlFrame(QtGui.QDialog):
         old_text=self.ui.label_hora.text()
         if old_text != ahora:
             self.ui.label_hora.setText(ahora)
-    
-    def setBarTimerMaximum(self,_max):
-        self.ui.barHeaterTimer.setMaximum(_max)
-        
-    def setBarTimerValue(self,value):
-        if self.old_bar_timer_value != value:
-            self.ui.barHeaterTimer.setValue(value)
-##            p = self.ui.barHeaterTimer.palette()
-##            p.setColor(QPalette.Highlight, QColor(Qt.red))
-##            self.ui.barHeaterTimer.setPalette(p)
-            self.ui.barHeaterTimer.show()
-            #self.ui.barHeaterTimer.setStyleSheet("background:'red';")
-            self.ui.barHeaterTimer.update()
-            self.old_bar_timer_value = value
             
             
     def modeAlta(self):

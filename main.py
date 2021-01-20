@@ -69,7 +69,7 @@ class main_thread(QThread):
         
         #CONFIG
         self.HIGH_TEMP = 21
-        self.LOW_TEMP = 18
+        self.LOW_TEMP = 19
         self.OFF_TEMP = 10
         self.temp_target = self.OFF_TEMP
         self.mode = "APAGADO"   #  AUTO,T.ALTA,T.BAJA,APAGADO
@@ -80,7 +80,7 @@ class main_thread(QThread):
         self.max_time_caldera = 10*60     #10 min max time the caldera can be active
         self.location = "Usurbil,ES"
         self.cond_protection = True
-        self.heater_protection = True
+        self.heater_protection = False
         self.save_history = False
         self.email = tools.Email(private)
         self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',ca_certs=certifi.where())
@@ -139,7 +139,7 @@ class main_thread(QThread):
         self.timer_cycle_caldera = tools.Timer(self.cycle_caldera, tools.Timer.ONE_SHOT)
         self.timer_heater_on = tools.Timer(self.max_time_caldera, tools.Timer.ONE_SHOT)
         self.start_ldr_time = time.time()-self.period_ldr
-        self.timer_tx = tools.Timer(const.TX_RESEND, 3) #3 times
+        self.timer_tx = tools.Timer(const.TX_RESEND, tools.Timer.PERIODIC) #perodic
         self.timer_pir = tools.Timer(50)
         self.timer_weather = tools.Timer(900) #update each 15 min
         self.timer_email = tools.Timer(5) #update each 1 min
@@ -151,8 +151,6 @@ class main_thread(QThread):
         
         self.myapp.show_temp_humi(self.sensor_humidity, self.sensor_temp)
         self.myapp.setTempTarget(self.temp_target)
-        self.myapp.setBarTimerMaximum(self.max_time_caldera)
-        self.myapp.setBarTimerValue(0)
         self.myapp.show_heater(False)
         self.myapp.ui.label_arm.setText("Sistema preparado")
         
@@ -211,14 +209,6 @@ class main_thread(QThread):
             self.num_failures+=1
             logging.info('Invalid DHT11 sensor data. Num Failures: '+str(self.num_failures))
             
-            
-    def _updateBarTimer(self,value):
-        """ Update the bar timer in the dialog GUI 
-        
-        Args:
-            value: Number between 0 and self.max_time_caldera
-        """
-        self.myapp.setBarTimerValue(value)
     
     def _updateHeatterWidget(self,value):
         """ Update the Dialog GUI heatter widget """
@@ -233,8 +223,24 @@ class main_thread(QThread):
         self.myapp.showStatus(value)'''
     
     def _caldera_protection(self):
-        if not self.heater_protection:
-            return True
+        '''if not self.heater_protection:
+            if self.sm_caldera == "IDLE":
+                if self.caldera == True:
+                    self.sm_caldera = "WORKING"
+                    self.led.setState('OFF')
+                    self.timer_heater_on.restart()
+            elif self.sm_caldera == "WORKING":
+                if self.caldera == False:
+                    self.sm_caldera = "IDLE"
+                    self.myapp.ui.label_arm.setText("Sistema preparado")
+                else:
+                    time_heater_on = self.timer_heater_on.elapsed()
+                    self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
+                self.led.toggle('GREEN')
+            else:
+                pass
+                    
+            return True'''
         
         caldera_enable = True
         if self.sm_caldera == "IDLE":
@@ -245,24 +251,23 @@ class main_thread(QThread):
                 self.led.setState('OFF')
         elif self.sm_caldera == "WORKING":
             time_heater_on = self.timer_heater_on.elapsed()
-            self.myapp.ui.label_arm.setText("Activada. Tiempo: "+ tools.segToMin(time_heater_on))
-            self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(time_heater_on))
-            if self.timer_heater_on.expired() == True: 
-                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(self.max_time_caldera))
+            s_percentage = str(int(time_heater_on*100/self.max_time_caldera))+"% "
+            if self.timer_heater_on.expired() == True and self.heater_protection == True: 
                 self.sm_caldera = "WAITING"
+                s_percentage = "100% "
                 #print ("Temporizador1 expiró. Espera")
             if self.caldera == False:
                 self.sm_caldera = "WAITING"
                 #print ("Caldera se apagó. Espera")
             self.led.toggle('GREEN')
+            self.myapp.ui.label_arm.setText(s_percentage + "Activada. Tiempo: "+ tools.segToMin(time_heater_on))
             
         elif self.sm_caldera == "WAITING": 
             self.led.setState('GREEN')
             caldera_enable = False
             self.myapp.ui.label_arm.setText("Desarmada. Espera: "+ tools.segToMin(int(self.timer_cycle_caldera.remainder()))) 
-            if self.timer_cycle_caldera.expired() == True:
+            if self.timer_cycle_caldera.expired() == True or not self.heater_protection:
                 self.myapp.ui.label_arm.setText("Sistema preparado")
-                self.emit(QtCore.SIGNAL("_updateBarTimer(int)"),int(0)) 
                 self.sm_caldera = "IDLE"
         else:
             pass
@@ -316,7 +321,6 @@ class main_thread(QThread):
             self.myapp.setTempTarget(self.temp_target)
         # ------------------------------------------------
         
-          
         # State machine protection of heater -----------------------
         caldera_enable = self._caldera_protection()
           
@@ -345,7 +349,7 @@ class main_thread(QThread):
             
         # Command the heatter
         if old_caldera != self.caldera:
-            self.timer_tx.restart()
+            self.timer_tx.expired_now()
             self.emit(QtCore.SIGNAL("_updateHeatterWidget(int)"),self.caldera)
             send_emomcms_data = False   # No send data
         #-----------------------------------------------------
@@ -621,6 +625,11 @@ class main_thread(QThread):
                 s += 'Alarm: '   +  "OFF" +"\n"
                 self.email.send_email("Domo status",s)
                 print ("Send STATUS email")
+            elif 'HEATING_ON' in body:
+                self.myapp.modeAuto()
+            elif 'HEATING_OFF' in body:
+                self.myapp.modeApagado()
+                
 
     def _get_mi_data(self, _id):
         if self.time_mi_data.expired() == False:
@@ -652,7 +661,6 @@ class main_thread(QThread):
             This is the endless method.
             * Read 3 times the temperature sensor
             * Create the signals to mannage the widgets:
-                - _updateBarTimer
                 - _updateHeatterWidget
                 - _updateWeatherText
             * Endless loop:
@@ -678,7 +686,6 @@ class main_thread(QThread):
         time.sleep(2)
         self._get_temp()
         time.sleep(2)
-        self.connect(self, QtCore.SIGNAL("_updateBarTimer(int)"),self._updateBarTimer)
         self.connect(self, QtCore.SIGNAL("_updateHeatterWidget(int)"),self._updateHeatterWidget)
         self.connect(self, QtCore.SIGNAL("_updateWeatherText(PyQt_PyObject)"),self._updateWeatherText)
         print ("Entering in main loop")

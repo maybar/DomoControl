@@ -1,15 +1,16 @@
 import psutil
 import time
-import tools
+import utils.tools as tools
 import datetime
 import sys
 import os
 import RPi.GPIO as GPIO
 import logging
-        
+      
+sys.path.append('./utils')  
         
 def start_app():
-    process = psutil.Popen("/home/pi/Documents/PhytonFiles/DomoControl/main.sh")
+    process = psutil.Popen("/home/pi/Scripts/DomoControl/main.sh")
     if process is not None:
         # print("main.sh Start by supervisor ! pid={}".format(process.pid))
         logging.debug("main.sh Start by supervisor ! pid=" + str(process.pid))
@@ -101,7 +102,7 @@ while(1):
             count_no_app+=1
             if count_no_app >= timeout:
                 # start_app()
-                os.system('/home/pi/Documents/PhytonFiles/DomoControl/main.sh')
+                os.system('/home/pi/Scripts/DomoControl/main.sh')
                 time.sleep(10)
                 count_no_app = 0
                 cont_try += 1
@@ -139,7 +140,7 @@ while(1):
                 
             
         #try to start again
-        process = psutil.Popen("/home/pi/Documents/PhytonFiles/DomoControl/main.sh")
+        process = psutil.Popen("/home/pi/Scripts/DomoControl/main.sh")
         restart_counter +=1
         if process is not None:
             print("main.sh restarted ! pid={}".format(process.pid))

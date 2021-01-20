@@ -6,7 +6,7 @@ echo cd /home/pi/Documents/DomoControl/domocontrol_web
 echo python3 -m http.server --cgi &
 
 sleep 1
-echo "sudo pigpiod"
+sudo pigpiod
 pigs m 5 w
 pigs m 6 w
 pigs w 6 1

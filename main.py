@@ -164,14 +164,14 @@ class main_thread(QThread):
     def __del__(self):
         """ It stops the thread """
         self.stop()
-        if not self.finished():
-            self.wait()
+        '''if not self.finished():
+            self.wait()'''
     
     def _save_function_id(self, id_funcion):
         f = os.open("/var/tmp/debug.txt", os.O_CREAT|os.O_WRONLY | os.O_NONBLOCK)
-        b = str.encode(str(id_funcion))
+        b = str.encode("IDF:" + str(id_funcion))
         os.write(f, b)
-        b = str.encode(str(self.watchdog_counter))
+        b = str.encode("-WDC:" + str(self.watchdog_counter) + "\n")
         os.write(f, b)
         os.close(f)
         self.myapp.set_debug_data(id_funcion, self.watchdog_counter)
@@ -639,10 +639,10 @@ class main_thread(QThread):
         print ("leyendo xiaomi...")
         
         for d in const.SENSORS.items():
-            print (d)
-            break
-        data = self.mi_hub.request_current_status(d)
-        print(data)
+            # print (d)
+            # break
+            data = self.mi_hub.request_current_status(d)
+            print(data)
         
         
           
@@ -702,7 +702,7 @@ class main_thread(QThread):
 ##              watchdog.reset(7)
             self._writeData(8)
             self._writeStatusData(9)
-            self._get_mi_data(10)              #lee sensores xiaomi
+            # self._get_mi_data(10)              #lee sensores xiaomi
             self._watchdog_process()
             time.sleep(0.5)
             QApplication.sendPostedEvents()    #to avoid freze the screen
